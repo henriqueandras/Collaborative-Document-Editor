@@ -1,0 +1,16 @@
+{
+  "name": "collaborative-document-editor",
+  "version": "1.0.0",
+  "description": "Repository for CPSC 559 Project - G15.",
+  "main": "client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
