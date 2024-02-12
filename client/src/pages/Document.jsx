@@ -21,11 +21,9 @@ export const Document = () => {
     quill = q;
   }, []);
 
-
   socket.onopen = function () {
     console.log("[open] Connection established");
     console.log("Sending to server");
-    socket.send("Hi, I'm a client!");
   };
 
   socket.onmessage = function (event) {
@@ -46,15 +44,17 @@ export const Document = () => {
     console.error(`[error] ${error.message}`);
   };
 
-  useEffect(()=>{
-    if(quill === null){
+  useEffect(() => {
+    if (quill === null) {
       return;
     }
-    quill.on("text-change",function(msg){
-      console.log(msg);
-      //socket.send("Testing sending ")
-    })
-  },[quill]);
+    quill.on("text-change", function (delta, oldDelta, source) {
+      if (source == "user") {
+        socket.send(JSON.stringify(delta));
+        console.log(delta);
+      }
+    });
+  }, [quill, socket]);
 
   return <div className="document" ref={wrapperRef}></div>;
 };
