@@ -1,0 +1,16 @@
+body {
+  background-color: #f3f3f3;
+}
+.document {
+  display: block;
+  margin: auto;
+  max-width: 50vw;
+  height: 90vh;
+}
+
+.document .ql-editor {
+  background-color: white;
+}
+.document .ql-toolbar {
+  background-color: white;
+}
