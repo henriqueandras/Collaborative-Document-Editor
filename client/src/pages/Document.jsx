@@ -1,10 +1,11 @@
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./styles.css";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 export const Document = () => {
-  const [quill, setQuill] = useState();
+  const socket = new WebSocket("ws://localhost:8080");
+  let quill;
 
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
@@ -17,10 +18,9 @@ export const Document = () => {
       },
       theme: "snow", // or 'bubble'
     });
-    setQuill(q);
+    quill = q;
   }, []);
 
-  const socket = new WebSocket("ws://localhost:8080");
 
   socket.onopen = function () {
     console.log("[open] Connection established");
@@ -45,6 +45,16 @@ export const Document = () => {
   socket.onerror = function (error) {
     console.error(`[error] ${error.message}`);
   };
+
+  useEffect(()=>{
+    if(quill === null){
+      return;
+    }
+    quill.on("text-change",function(msg){
+      console.log(msg);
+      //socket.send("Testing sending ")
+    })
+  },[quill]);
 
   return <div className="document" ref={wrapperRef}></div>;
 };

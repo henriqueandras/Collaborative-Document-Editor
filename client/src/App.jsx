@@ -12,7 +12,7 @@ function App() {
         <Routes>
           <Route
             path="document"
-            element={<Document kioskScreen={<Document />} />}
+            element={<Document  />}
           />
         </Routes>
       </BrowserRouter>
