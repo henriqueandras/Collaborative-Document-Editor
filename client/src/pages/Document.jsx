@@ -1,8 +1,25 @@
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./styles.css";
-import { useCallback, useEffect } from "react";
+import { useCallback, useState } from "react";
+
 export const Document = () => {
+  const [quill, setQuill] = useState();
+
+  const wrapperRef = useCallback((wrapper) => {
+    if (wrapper == null) return;
+    wrapper.innerHTML = "";
+    const editor = document.createElement("div");
+    wrapper.append(editor);
+    const q = new Quill(editor, {
+      modules: {
+        toolbar: [[{ header: [1, 2, false] }], ["bold", "italic", "underline"]],
+      },
+      theme: "snow", // or 'bubble'
+    });
+    setQuill(q);
+  }, []);
+
   const socket = new WebSocket("ws://localhost:8080");
 
   socket.onopen = function () {
@@ -28,19 +45,6 @@ export const Document = () => {
   socket.onerror = function (error) {
     console.error(`[error] ${error.message}`);
   };
-
-  const wrapperRef = useCallback((wrapper) => {
-    if (wrapper == null) return;
-    wrapper.innerHTML = "";
-    const editor = document.createElement("div");
-    wrapper.append(editor);
-    const q = new Quill(editor, {
-      modules: {
-        toolbar: [[{ header: [1, 2, false] }], ["bold", "italic", "underline"]],
-      },
-      theme: "snow", // or 'bubble'
-    });
-  }, []);
 
   return <div className="document" ref={wrapperRef}></div>;
 };
