@@ -28,6 +28,7 @@ export const Document = () => {
 
   socket.onmessage = function (event) {
     console.log(`[message] Data received from server: ${event.data}`);
+    quill.updateContents(event.data);
   };
 
   socket.onclose = function (event) {
@@ -50,8 +51,8 @@ export const Document = () => {
     }
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        socket.send(JSON.stringify(delta));
         console.log(delta);
+        socket.send(JSON.stringify(delta));
       }
     });
   }, [quill, socket]);
