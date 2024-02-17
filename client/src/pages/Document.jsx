@@ -16,12 +16,17 @@ export const Document = () => {
     };
   }, []);
 
-  // const handler = (delta) => {
-  //   quill.updateContents(delta);
-  // };
-  // socket.on("new-updates", handler);
+  const handler = (delta) => {
+    quill.updateContents(delta);
+  };
+  useEffect(()=>{
+    if(socket == null) return;
+
+    socket.on("new-updates", handler);
+  },[socket]);
 
   useEffect(() => {
+    if( quill == null || socket == null ) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log(delta);

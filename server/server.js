@@ -9,8 +9,8 @@ const io = require("socket.io")(3001, {
 
 io.on("connection", (socket) => {
   console.log("A client connected!");
-  // socket.on("updates", (delta) => {
-  //   // Send client updates to everyone
-  //   io.emit("new-updates", delta);
-  // });
+  socket.on("updates", (delta) => {
+    // Send client updates to everyone
+    socket.broadcast.emit("new-updates", delta);
+  });
 });
