@@ -1,11 +1,34 @@
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./styles.css";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
 export const Document = () => {
-  const socket = new WebSocket("ws://localhost:8080");
-  let quill;
+  const [socket, setSocket] = useState();
+  const [quill, setQuill] = useState();
+
+  useEffect(() => {
+    const s = io("http://localhost:3001");
+    setSocket(s);
+    return () => {
+      s.disconnect();
+    };
+  }, []);
+
+  // const handler = (delta) => {
+  //   quill.updateContents(delta);
+  // };
+  // socket.on("new-updates", handler);
+
+  useEffect(() => {
+    quill.on("text-change", function (delta, oldDelta, source) {
+      if (source == "user") {
+        console.log(delta);
+        socket.emit("updates", delta);
+      }
+    });
+  }, [socket, quill]);
 
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
@@ -18,44 +41,8 @@ export const Document = () => {
       },
       theme: "snow", // or 'bubble'
     });
-    quill = q;
+    setQuill(q);
   }, []);
-
-  socket.onopen = function () {
-    console.log("[open] Connection established");
-    console.log("Sending to server");
-  };
-
-  socket.onmessage = function (event) {
-    console.log(`[message] Data received from server: ${event.data}`);
-    quill.updateContents(event.data);
-  };
-
-  socket.onclose = function (event) {
-    if (event.wasClean) {
-      console.log(
-        `[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`
-      );
-    } else {
-      console.error("[close] Connection died");
-    }
-  };
-
-  socket.onerror = function (error) {
-    console.error(`[error] ${error.message}`);
-  };
-
-  useEffect(() => {
-    if (quill === null) {
-      return;
-    }
-    quill.on("text-change", function (delta, oldDelta, source) {
-      if (source == "user") {
-        console.log(delta);
-        socket.send(JSON.stringify(delta));
-      }
-    });
-  }, [quill, socket]);
 
   return <div className="document" ref={wrapperRef}></div>;
 };
