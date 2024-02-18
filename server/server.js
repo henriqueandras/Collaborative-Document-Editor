@@ -25,6 +25,7 @@ io.on("connection", (socket) => {
 
   socket.on("create-document",(message)=>{
     const { documentId } = message;
+    rooms.removeFromAnyOtherRoom(socket.id)
     rooms.createRoom(documentId);
     rooms.addPermittedUsers(documentId, socket.id);
     rooms.addCurrentUsers(documentId, socket.id);
@@ -48,6 +49,7 @@ io.on("connection", (socket) => {
 
   socket.on("join-document",(message)=>{
     const {documentId} = message;
+    rooms.removeFromAnyOtherRoom(socket.id);
     rooms.addCurrentUsers(documentId, socket.id);
     rooms.addPermittedUsers(documentId, socket.id);
   });

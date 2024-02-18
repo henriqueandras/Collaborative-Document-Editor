@@ -16,7 +16,9 @@ class Rooms{
 
     addPermittedUsers(documentId, user){
         if(documentId in this.rooms){
-            this.rooms[documentId].permittedUsers.push(user);
+            if(!this.rooms[documentId].permittedUsers.includes(user)){
+                this.rooms[documentId].permittedUsers.push(user);
+            }
         }
     }
     removePermittedUsers(documentId, user){
@@ -28,10 +30,12 @@ class Rooms{
     }
     addCurrentUsers(documentId, user){
         if(documentId in this.rooms){
-            this.rooms[documentId].currentUsers.push(user);
+            if(!this.rooms[documentId].currentUsers.includes(user)){
+                this.rooms[documentId].currentUsers.push(user);
+            }
         }
     }
-    removePermittedUsers(documentId, user){
+    removeCurrentUsers(documentId, user){
         if(documentId in this.rooms){
             const currUsers = this.rooms[documentId].currentUsers;
             const newUsers = currUsers.filter((u)=>u!==user);
@@ -43,6 +47,13 @@ class Rooms{
         if(documentId in this.rooms){
             return this.rooms[documentId].currentUsers;
         }
+    }
+
+    removeFromAnyOtherRoom(user){
+        const documents = this.getDocuments();
+        documents.forEach((documentId)=>{
+            this.removeCurrentUsers(documentId, user);
+        });
     }
 
 }
