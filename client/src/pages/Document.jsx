@@ -11,17 +11,17 @@ export const Document = () => {
   const [quill, setQuill] = useState();
   const socket = useContext(SocketClient);
   
+  const handler = (delta) => {
+    console.log("recieved:",delta);
+    quill.updateContents(delta.ops);
+  };
   
   useEffect(()=>{
+    console.log('something changes');
     if(socket == null || quill == null) return;
 
-    const handler = (delta) => {
-      console.log("recieved:",delta);
-      quill.updateContents(delta);
-    };
-
     socket.on("new-updates", handler);
-  },[socket]);
+  },[socket, quill]);
 
   useEffect(() => {
     if( quill == null || socket == null || documentId == null) return;

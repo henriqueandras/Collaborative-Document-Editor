@@ -1,19 +1,19 @@
-const socket = require("socket.io");
 const express = require('express');
 const cors = require('cors');
 const Rooms = require("./Rooms/rooms");
 
 const app = express();
+const http = require('http').Server(app);
+
 app.use(express.json());
-app.use(express.urlencoded({extended:false}));
+app.use(express.urlencoded({extended:true}));
 app.use(cors());
 
-const REST_API_PORT = 4001;
-const SOCKET_PORT = 3001;
+const PORT = 3001;
 
 const rooms = new Rooms();
 
-const io = socket(SOCKET_PORT, {
+const io = require("socket.io")(http, {
   cors: {
     origin: "http://localhost:5173",
     methods: ["GET", "POST"],
@@ -35,11 +35,11 @@ io.on("connection", (socket) => {
     const userList = rooms.getCurrentUsers(documentId);
     console.log(userList.length);
     console.log(documentId);
-    userList.forEach((sock)=>{
+    userList.map((sock)=>{
       console.log(delta, sock);
       // console.log(io.sockets);
-      if(sock !== socket){
-        io.to(sock).emit("new-updates",delta);
+      if(sock !== socket.id){
+        socket.to(sock).emit("new-updates",delta);
       }
     });
     // Send client updates to everyone
@@ -61,4 +61,6 @@ app.get('/getDocumentList',(req,res)=>{
   });
 });
 
-app.listen(REST_API_PORT, console.log(`REST-API listening on port: ${REST_API_PORT}`));
+http.listen(PORT,()=>{
+  console.log(`Listening on port ${PORT}`);
+})

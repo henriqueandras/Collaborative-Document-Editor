@@ -11,7 +11,7 @@ export default function ListDocuments(){
 
     const fetchData = async () => {
         try {
-          const response = await fetch('http://localhost:4001/getDocumentList', {
+          const response = await fetch('http://localhost:3001/getDocumentList', {
             method: 'GET'
             });
           if (!response.ok) {
