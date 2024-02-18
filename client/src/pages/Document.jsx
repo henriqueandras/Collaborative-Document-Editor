@@ -1,36 +1,37 @@
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./styles.css";
-import { useCallback, useEffect, useState } from "react";
-import { io } from "socket.io-client";
+import { useCallback, useContext, useEffect, useState } from "react";
+import {SocketClient} from "../SocketClientContext";
+import {useSearchParams} from 'react-router-dom';
 
 export const Document = () => {
-  const [socket, setSocket] = useState();
+  const [searchParams] = useSearchParams();
+  const documentId = searchParams.get('id');
   const [quill, setQuill] = useState();
-
-  useEffect(() => {
-    const s = io("http://localhost:3001");
-    setSocket(s);
-    return () => {
-      s.disconnect();
-    };
-  }, []);
-
+  const socket = useContext(SocketClient);
+  
   const handler = (delta) => {
-    quill.updateContents(delta);
+    console.log("recieved:",delta);
+    quill.updateContents(delta.ops);
   };
+  
   useEffect(()=>{
-    if(socket == null) return;
+    console.log('something changes');
+    if(socket == null || quill == null) return;
 
     socket.on("new-updates", handler);
-  },[socket]);
+  },[socket, quill]);
 
   useEffect(() => {
-    if( quill == null || socket == null ) return;
+    if( quill == null || socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log(delta);
-        socket.emit("updates", delta);
+        socket.emit("updates", {
+          documentId:documentId,
+          delta:delta
+        });
       }
     });
   }, [socket, quill]);
@@ -48,6 +49,8 @@ export const Document = () => {
     });
     setQuill(q);
   }, []);
+
+  if(!documentId) return <h1>No such document exists</h1>
 
   return <div className="document" ref={wrapperRef}></div>;
 };
