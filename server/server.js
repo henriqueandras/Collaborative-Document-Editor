@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const Rooms = require("./Rooms/rooms");
+const {connect} = require('./Database/db');
+const Document = require('./Database/Document/Document');
 
 const app = express();
 const http = require('http').Server(app);
@@ -12,6 +14,8 @@ app.use(cors());
 const PORT = 3001;
 
 const rooms = new Rooms();
+connect();
+const defaultValue = "";
 
 const io = require("socket.io")(http, {
   cors: {
@@ -23,19 +27,21 @@ const io = require("socket.io")(http, {
 io.on("connection", (socket) => {
   console.log("A client connected!");
 
-  socket.on("create-document",(message)=>{
+  socket.on("create-document",async (message)=>{
     const { documentId } = message;
     rooms.removeFromAnyOtherRoom(socket.id)
     rooms.createRoom(documentId);
     rooms.addPermittedUsers(documentId, socket.id);
     rooms.addCurrentUsers(documentId, socket.id);
+    await Document.create({_id:documentId, data:defaultValue});
   });
 
-  socket.on("updates", (message) => {
+  socket.on("updates", async(message) => {
     const { documentId, delta } = message;
     const userList = rooms.getCurrentUsers(documentId);
     console.log(userList.length);
     console.log(documentId);
+    await Document.findByIdAndUpdate(documentId, {delta});
     userList.map((sock)=>{
       console.log(delta, sock);
       // console.log(io.sockets);
@@ -47,11 +53,13 @@ io.on("connection", (socket) => {
     // socket.broadcast.emit("new-updates", delta);
   });
 
-  socket.on("join-document",(message)=>{
+  socket.on("join-document",async(message)=>{
     const {documentId} = message;
     rooms.removeFromAnyOtherRoom(socket.id);
     rooms.addCurrentUsers(documentId, socket.id);
     rooms.addPermittedUsers(documentId, socket.id);
+    const document = await Document.findById(documentId);
+    console.log(document);
   });
 });
 
