@@ -1,9 +1,10 @@
 services:
   mongodb:
     image: mongo:latest
+    restart: always
     ports:
       - '27017:27017'
     volumes:
-      - dbdata6:/data/db
+      - dbdatamongo:/data/db
 volumes:
-  dbdata6:
+  dbdatamongo:{}

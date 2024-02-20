@@ -15,7 +15,7 @@ const PORT = 3001;
 
 const rooms = new Rooms();
 connect();
-const defaultValue = "";
+const defaultValue = {ops:[]};
 
 const io = require("socket.io")(http, {
   cors: {
@@ -41,7 +41,12 @@ io.on("connection", (socket) => {
     const userList = rooms.getCurrentUsers(documentId);
     console.log(userList.length);
     console.log(documentId);
-    await Document.findByIdAndUpdate(documentId, {delta});
+    const prev = await Document.findById(documentId);
+    console.log(JSON.stringify(prev));
+    const newData = {
+      ops: [...prev.data.ops, ...delta.ops]
+    }
+    await Document.findByIdAndUpdate(documentId, {data:newData});
     userList.map((sock)=>{
       console.log(delta, sock);
       // console.log(io.sockets);
@@ -59,7 +64,7 @@ io.on("connection", (socket) => {
     rooms.addCurrentUsers(documentId, socket.id);
     rooms.addPermittedUsers(documentId, socket.id);
     const document = await Document.findById(documentId);
-    console.log(document);
+    socket.emit("join-document-data", document.data);
   });
 });
 
