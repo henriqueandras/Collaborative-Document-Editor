@@ -17,7 +17,7 @@ export const Document = () => {
   };
   
   const handlerSetContent = (delta) => {
-    quill.setContents(delta.ops);
+    quill.setContents(delta);
   }
 
   useEffect(()=>{
@@ -33,7 +33,7 @@ export const Document = () => {
     if( quill == null || socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        console.log(delta);
+        console.log(quill.getContents());
         socket.emit("updates", {
           documentId:documentId,
           delta:delta

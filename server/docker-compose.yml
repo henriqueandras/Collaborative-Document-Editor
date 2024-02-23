@@ -7,4 +7,4 @@ services:
     volumes:
       - dbdatamongo:/data/db
 volumes:
-  dbdatamongo:{}
+  dbdatamongo:

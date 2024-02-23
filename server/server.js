@@ -3,6 +3,7 @@ const cors = require('cors');
 const Rooms = require("./Rooms/rooms");
 const {connect} = require('./Database/db');
 const Document = require('./Database/Document/Document');
+const { getInsertedDataFromQuill } = require('./util/util');
 
 const app = express();
 const http = require('http').Server(app);
@@ -15,7 +16,7 @@ const PORT = 3001;
 
 const rooms = new Rooms();
 connect();
-const defaultValue = {ops:[]};
+const defaultValue = {updates:[], text:[]};
 
 const io = require("socket.io")(http, {
   cors: {
@@ -42,9 +43,11 @@ io.on("connection", (socket) => {
     console.log(userList.length);
     console.log(documentId);
     const prev = await Document.findById(documentId);
-    console.log(JSON.stringify(prev));
+    console.log("ops",JSON.stringify(delta.ops[1]));
+    console.log("delta",JSON.stringify(delta));
     const newData = {
-      ops: [...prev.data.ops, ...delta.ops]
+      updates: [...prev.data.updates, ...delta.ops],
+      text:[...prev.data.text,getInsertedDataFromQuill(delta)]
     }
     await Document.findByIdAndUpdate(documentId, {data:newData});
     userList.map((sock)=>{
@@ -64,7 +67,8 @@ io.on("connection", (socket) => {
     rooms.addCurrentUsers(documentId, socket.id);
     rooms.addPermittedUsers(documentId, socket.id);
     const document = await Document.findById(documentId);
-    socket.emit("join-document-data", document.data);
+    console.log("document", document);
+    socket.emit("join-document-data", document.data.text);
   });
 });
 
