@@ -1,0 +1,10 @@
+services:
+  mongodb:
+    image: mongo:latest
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - dbdatamongo:/data/db
+volumes:
+  dbdatamongo:

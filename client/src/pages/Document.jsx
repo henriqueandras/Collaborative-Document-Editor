@@ -11,23 +11,29 @@ export const Document = () => {
   const [quill, setQuill] = useState();
   const socket = useContext(SocketClient);
   
-  const handler = (delta) => {
+  const handlerUpdateContent = (delta) => {
     console.log("recieved:",delta);
     quill.updateContents(delta.ops);
   };
   
+  const handlerSetContent = (delta) => {
+    quill.setContents(delta);
+  }
+
   useEffect(()=>{
     console.log('something changes');
     if(socket == null || quill == null) return;
 
-    socket.on("new-updates", handler);
+    socket.on("new-updates", handlerUpdateContent);
+
+    socket.on("join-document-data", handlerSetContent);
   },[socket, quill]);
 
   useEffect(() => {
     if( quill == null || socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        console.log(delta);
+        console.log(quill.getContents());
         socket.emit("updates", {
           documentId:documentId,
           delta:delta
