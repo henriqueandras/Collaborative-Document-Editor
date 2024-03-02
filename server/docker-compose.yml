@@ -1,10 +1,22 @@
 services:
-  mongodb:
+  server_api:
+    container_name: server
+    build: .
+    ports:
+      - '3001:3001'
+    volumes:
+      - .:/app
+    environment:
+      - DB_ENDPOINT=mongodb://mongodb_database:27017
+    depends_on:
+      - mongodb_database
+    restart: always
+  mongodb_database:
     image: mongo:latest
     restart: always
     ports:
       - '27017:27017'
     volumes:
-      - dbdatamongo:/data/db
+      - datamongodb:/data/db
 volumes:
-  dbdatamongo:
+  datamongodb:
