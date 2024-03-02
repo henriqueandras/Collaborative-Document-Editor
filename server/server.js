@@ -12,7 +12,11 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cors());
 
-const PORT = 3001;
+let PORT = 3001;
+
+if (process.argv.length === 3) {
+  PORT = Number.parseInt(process.argv[2]);
+}
 
 const rooms = new Rooms();
 connect();
