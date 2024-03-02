@@ -24,7 +24,7 @@ docker-compose -f docker-compose-dev.yml up -d
 Then run as many instances of server from different ports that will
 connect to the same DB
 ```bash
-npm run dev  // to run default PORT 3000
+npm run dev  // to run default PORT 3001
 or
 npm run dev <PORT_NUMBER>  // specify port to PORT_NUMBER
 eg. npm run dev 4000
