@@ -25,6 +25,9 @@ const rooms = new Rooms();
 connect();
 const defaultValue = { updates: [], text: [] };
 
+// const currentEndpoint = `http://localhost:${PORT}`;
+const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
+
 let otherServerSockets = [];
 const serverConnections = [];
 const listOfEndpoints = [
@@ -103,7 +106,7 @@ function createSocketListeners(io) {
             if (!bullyReceived && !leader) {
               leader = {
                 leader:socket.id,
-                endpoint:`http://localhost:${PORT}`
+                endpoint:currentEndpoint
               };
               // socket.broadcast.emit("leader-elected", {
               //   leader: io.id,
@@ -111,7 +114,7 @@ function createSocketListeners(io) {
               // });
               broadcastToAll("leader-elected",{
                 leader: socket.id,
-                endpoint: `http://localhost:${PORT}`,
+                endpoint: currentEndpoint,
               });
               // socket.broadcast.emit("leader-elected", {
               //   leader: io.id,
@@ -136,7 +139,7 @@ function createSocketListeners(io) {
       if (isTop) {
         broadcastToAll("leader-elected",{
           leader: socket.id,
-          endpoint: `http://localhost:${PORT}`,
+          endpoint: currentEndpoint,
         })
         // socket.broadcast.emit("leader-elected", {
         //   leader: socket.id,
