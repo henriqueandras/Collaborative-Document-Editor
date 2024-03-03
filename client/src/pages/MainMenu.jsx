@@ -1,8 +1,8 @@
 import Button from "@mui/material/Button";
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import {SocketClient} from "../SocketClientContext";
-import { v4 as uuid } from 'uuid';
+import { SocketClient } from "../SocketClientContext";
+import { v4 as uuid } from "uuid";
 
 export const MainMenu = () => {
   const navigate = useNavigate();
@@ -15,8 +15,8 @@ export const MainMenu = () => {
         variant="outlined"
         onClick={() => {
           const documentId = uuid();
-          socket.emit("create-document",{
-            documentId:documentId
+          socket.socket.emit("create-document", {
+            documentId: documentId,
           });
           navigate(`document?id=${documentId}`);
         }}
@@ -31,8 +31,8 @@ export const MainMenu = () => {
           width: "20vw",
         }}
         variant="outlined"
-        onClick={()=>{
-          navigate('list')
+        onClick={() => {
+          navigate("list");
         }}
       >
         Open Existing Document

@@ -1,15 +1,15 @@
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
 const Rooms = require("./Rooms/rooms");
-const {connect} = require('./Database/db');
-const Document = require('./Database/Document/Document');
-const { getInsertedDataFromQuill } = require('./util/util');
+const { connect } = require("./Database/db");
+const Document = require("./Database/Document/Document");
+const { getInsertedDataFromQuill } = require("./util/util");
 
 const app = express();
-const http = require('http').Server(app);
+const http = require("http").Server(app);
 
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 let PORT = 3001;
@@ -20,11 +20,11 @@ if (process.argv.length === 3) {
 
 const rooms = new Rooms();
 connect();
-const defaultValue = {updates:[], text:[]};
+const defaultValue = { updates: [], text: [] };
 
 const io = require("socket.io")(http, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -32,58 +32,64 @@ const io = require("socket.io")(http, {
 io.on("connection", (socket) => {
   console.log("A client connected!");
 
-  socket.on("create-document",async (message)=>{
-    const { documentId } = message;
-    rooms.removeFromAnyOtherRoom(socket.id)
+  socket.on("create-document", async (message) => {
+    const { documentId, sId } = message;
+    console.log("Hello", sId);
+    rooms.removeFromAnyOtherRoom(sId);
     rooms.createRoom(documentId);
-    rooms.addPermittedUsers(documentId, socket.id);
-    rooms.addCurrentUsers(documentId, socket.id);
-    await Document.create({_id:documentId, data:defaultValue});
+    rooms.addPermittedUsers(documentId, sId);
+    rooms.addCurrentUsers(documentId, sId);
+    console.log("creating document: ", documentId);
+    await Document.create({ _id: documentId, data: defaultValue });
   });
 
-  socket.on("updates", async(message) => {
-    const { documentId, delta } = message;
+  socket.on("updates", async (message) => {
+    const { documentId, delta, sId } = message;
     const userList = rooms.getCurrentUsers(documentId);
-    console.log(userList.length);
+    console.log(userList);
     console.log(documentId);
     const prev = await Document.findById(documentId);
-    console.log("ops",JSON.stringify(delta.ops[1]));
-    console.log("delta",JSON.stringify(delta));
+    console.log("ops", JSON.stringify(delta.ops[1]));
+    console.log("delta", JSON.stringify(delta));
     const newData = {
       updates: [...prev.data.updates, ...delta.ops],
-      text:[...prev.data.text,getInsertedDataFromQuill(delta)]
-    }
-    await Document.findByIdAndUpdate(documentId, {data:newData});
-    userList.map((sock)=>{
-      console.log(delta, sock);
-      // console.log(io.sockets);
-      if(sock !== socket.id){
-        socket.to(sock).emit("new-updates",delta);
-      }
+      text: [...prev.data.text, getInsertedDataFromQuill(delta)],
+    };
+    await Document.findByIdAndUpdate(documentId, { data: newData });
+    socket.emit("new-updates", {
+      delta: delta,
+      userList: userList,
+      senderId: sId,
     });
-    // Send client updates to everyone
-    // socket.broadcast.emit("new-updates", delta);
   });
 
-  socket.on("join-document",async(message)=>{
-    const {documentId} = message;
-    rooms.removeFromAnyOtherRoom(socket.id);
-    rooms.addCurrentUsers(documentId, socket.id);
-    rooms.addPermittedUsers(documentId, socket.id);
+  socket.on("join-document", async (message) => {
+    const { documentId, sId } = message;
+    rooms.removeFromAnyOtherRoom(sId);
+    rooms.addCurrentUsers(documentId, sId);
+    rooms.addPermittedUsers(documentId, sId);
     const document = await Document.findById(documentId);
     console.log("document", document);
-    socket.emit("join-document-data", document.data.text);
+    socket.emit("join-document-data", {
+      text: document.data.text,
+      sId: sId,
+    });
+  });
+
+  socket.on("client-disconnect", async (message) => {
+    const { sId } = message;
+    rooms.removeFromAnyOtherRoom(sId);
   });
 });
 
-app.get('/getDocumentList',(req,res)=>{
+app.get("/getDocumentList", (req, res) => {
   const data = rooms.getDocuments();
   console.log(data);
   res.send({
-    documents: data
+    documents: data,
   });
 });
 
-http.listen(PORT,()=>{
+http.listen(PORT, () => {
   console.log(`Listening on port ${PORT}`);
-})
+});

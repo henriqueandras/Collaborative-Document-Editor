@@ -2,41 +2,48 @@ import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import "./styles.css";
 import { useCallback, useContext, useEffect, useState } from "react";
-import {SocketClient} from "../SocketClientContext";
-import {useSearchParams} from 'react-router-dom';
+import { SocketClient } from "../SocketClientContext";
+import { useSearchParams } from "react-router-dom";
 
 export const Document = () => {
   const [searchParams] = useSearchParams();
-  const documentId = searchParams.get('id');
+  const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
   const socket = useContext(SocketClient);
-  
+
   const handlerUpdateContent = (delta) => {
-    console.log("recieved:",delta);
+    console.log("recieved:", delta);
     quill.updateContents(delta.ops);
   };
-  
+
   const handlerSetContent = (delta) => {
+    console.log(delta);
     quill.setContents(delta);
-  }
-
-  useEffect(()=>{
-    console.log('something changes');
-    if(socket == null || quill == null) return;
-
-    socket.on("new-updates", handlerUpdateContent);
-
-    socket.on("join-document-data", handlerSetContent);
-  },[socket, quill]);
+  };
 
   useEffect(() => {
-    if( quill == null || socket == null || documentId == null) return;
+    console.log("something changes");
+    if (socket.socket == null || quill == null) return;
+
+    socket.socket.on("new-updates", handlerUpdateContent);
+
+    socket.socket.on("join-document-data", handlerSetContent);
+  }, [socket, quill]);
+
+  useEffect(() => {
+    socket.socket.emit("join-document", {
+      documentId: documentId,
+    });
+  }, [socket]);
+
+  useEffect(() => {
+    if (quill == null || socket.socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log(quill.getContents());
-        socket.emit("updates", {
-          documentId:documentId,
-          delta:delta
+        socket.socket.emit("updates", {
+          documentId: documentId,
+          delta: delta,
         });
       }
     });
@@ -56,7 +63,7 @@ export const Document = () => {
     setQuill(q);
   }, []);
 
-  if(!documentId) return <h1>No such document exists</h1>
+  if (!documentId) return <h1>No such document exists</h1>;
 
   return <div className="document" ref={wrapperRef}></div>;
 };
