@@ -26,6 +26,7 @@ connect();
 const defaultValue = { updates: [], text: [] };
 
 let otherServerSockets = [];
+const serverConnections = [];
 const listOfEndpoints = [
   "http://localhost:3001",
   "http://localhost:3002",
@@ -33,8 +34,10 @@ const listOfEndpoints = [
   "http://localhost:3004",
 ];
 let running = false;
+let bullyReceived = false;
+let leader = null;
 
-const io = require("socket.io")(http, {
+const ioServer = require("socket.io")(http, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -44,53 +47,86 @@ const io = require("socket.io")(http, {
 listOfEndpoints.forEach((serverEndpoint) => {
   if (!serverEndpoint.includes(String(PORT))) {
     const socketServer = ioClient(serverEndpoint);
+    createSocketListeners(socketServer);
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
       sockId: socketServer.id,
       socket: socketServer,
     });
-    createSocketListeners(socketServer);
   }
 });
 
+function broadcastToAll(event, message){
+  for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
+    actualSocket.emit(event, message);
+  }
+}
+
 function createSocketListeners(io) {
   io.on("connection", (socket) => {
+    if(io === ioServer){
+      serverConnections.push(socket);
+    }
     console.log("A client connected!");
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
+      console.log("bully-received");
     });
 
     socket.on("leader-elected", (message) => {
-      leader = message.leader;
+      console.log("leader received");
+      leader = message;
       running = false;
+      console.log(`${PORT}:`,leader);
+      serverConnections.forEach((s)=>{
+        ioServer.to(s.id).emit("leader-elected",message);
+      });
     });
 
     socket.on("initiate-election", (message) => {
+      leader = null;
+      console.log('initiate-election called')
+      if(message.id<PORT){
+        socket.emit("bully-message");
+      }
       running = true;
       let isTop = true;
-      for (const { serverEndpoint, sockId, socket } of otherServerSockets) {
+      for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
         const ports = serverEndpoint.split(":");
         if (ports[2] > PORT) {
           isTop = false;
-          io.to(sockId).emit("initiate-election", message);
+          actualSocket.emit("initiate-election", {
+            id:PORT
+          });
           setTimeout(() => {
-            if (!bullyReceived) {
-              leader = socket.id;
-              socket.emit("leader-elected", {
+            if (!bullyReceived && !leader) {
+              leader = {
+                leader:socket.id,
+                endpoint:`http://localhost:${PORT}`
+              };
+              // socket.broadcast.emit("leader-elected", {
+              //   leader: io.id,
+              //   endpoint: `http://localhost:${PORT}`,
+              // });
+              broadcastToAll("leader-elected",{
                 leader: socket.id,
-                endpoint: serverEndpoint,
+                endpoint: `http://localhost:${PORT}`,
               });
+              // socket.broadcast.emit("leader-elected", {
+              //   leader: io.id,
+              //   endpoint: `http://localhost:${PORT}`,
+              // });
             } else {
               setTimeout(() => {
                 if (leader) {
-                  socket.emit("leader-elected", {
-                    leader: socket.id,
-                    endpoint: serverEndpoint,
-                  });
+                  // broadcastToAll("leader-elected",leader);
+                  // socket.broadcast.emit("leader-elected", leader);
                   running = false;
                 } else {
-                  io.to(socket.id).emit("initiate-election", message);
+                  actualSocket.emit("initiate-election", {
+                    id:PORT
+                  });
                 }
               }, 5000);
             }
@@ -98,9 +134,14 @@ function createSocketListeners(io) {
         }
       }
       if (isTop) {
-        socket.broadcast.emit("leader-elected", {
+        broadcastToAll("leader-elected",{
           leader: socket.id,
-        });
+          endpoint: `http://localhost:${PORT}`,
+        })
+        // socket.broadcast.emit("leader-elected", {
+        //   leader: socket.id,
+        //   endpoint: `http://localhost:${PORT}`,
+        // });
       }
     });
 
@@ -155,7 +196,7 @@ function createSocketListeners(io) {
   });
 }
 
-createSocketListeners(io);
+createSocketListeners(ioServer);
 
 app.get("/getDocumentList", (req, res) => {
   const data = rooms.getDocuments();
