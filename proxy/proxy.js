@@ -23,10 +23,26 @@ const ioserver = require("socket.io")(http, {
   },
 });
 
-const server_socket = io("http://localhost:3001");
+const listOfEndpoints = [
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
+];
 
-server_socket.on("connect", () => {
+let SERVER_ENDPOINT = listOfEndpoints.shift();
+
+let server_socket = io(SERVER_ENDPOINT);
+
+server_socket.on("connect", (sock) => {
   console.log("Connected to server");
+
+  server_socket.on("leader-elected", (message) => {
+    sock.close();
+    const { endpoint } = message;
+    server_socket = io(endpoint);
+    onConnectError();
+  });
 
   server_socket.on("new-updates", async (message) => {
     const { delta, userList, senderId } = message;
@@ -45,6 +61,20 @@ server_socket.on("connect", () => {
     console.log("join sId: ", sId);
     ioserver.to(sId).emit("join-document-data", text);
   });
+});
+
+function onConnectError() {
+  server_socket.close();
+  SERVER_ENDPOINT = listOfEndpoints.shift();
+  server_socket = io(SERVER_ENDPOINT);
+  server_socket.emit("initiate-election");
+  server_socket.on("connect_error", () => {
+    onConnectError(server_socket);
+  });
+}
+
+server_socket.on("connect_error", () => {
+  onConnectError();
 });
 
 ioserver.on("connection", (socket) => {
@@ -81,7 +111,7 @@ ioserver.on("connection", (socket) => {
 });
 
 app.get("/getDocumentList", (req, res) => {
-  fetch("http://localhost:3001/getDocumentList")
+  fetch(`${SERVER_ENDPOINT}/getDocumentList`)
     .then((result) => {
       if (result.ok) return result.json();
       else throw new Error("fetch failed!");
