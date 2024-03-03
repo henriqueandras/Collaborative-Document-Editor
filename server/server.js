@@ -25,8 +25,8 @@ const rooms = new Rooms();
 connect();
 const defaultValue = { updates: [], text: [] };
 
-// const currentEndpoint = `http://localhost:${PORT}`;
-const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
+const currentEndpoint = `http://localhost:${PORT}`;
+// const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
 
 let otherServerSockets = [];
 const serverConnections = [];
