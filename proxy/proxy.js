@@ -48,6 +48,7 @@ function setupProxyServerConnection(server_socket){
       server_socket.on("connect_error", () => {
         onConnectError(true);
       });
+      setupClientProxyConnection(ioserver, server_socket);
     });
   
     server_socket.on("new-updates", async (message) => {
@@ -92,38 +93,43 @@ server_socket.on("connect_error", () => {
   onConnectError(true);
 });
 
-ioserver.on("connection", (socket) => {
-  console.log("A client connected!");
-  socket.on("create-document", async (message) => {
-    console.log("create document called...");
-    server_socket.emit("create-document", {
-      documentId: message.documentId,
-      sId: socket.id,
+function setupClientProxyConnection(ioServer, server_socket){
+  ioServer.on("connection", (socket) => {
+    console.log("A client connected!");
+    socket.on("create-document", async (message) => {
+      console.log("create document called...");
+      server_socket.emit("create-document", {
+        documentId: message.documentId,
+        sId: socket.id,
+      });
+    });
+    socket.on("join-document", async (message) => {
+      console.log("join document called...");
+      server_socket.emit("join-document", {
+        documentId: message.documentId,
+        sId: socket.id,
+      });
+    });
+    socket.on("updates", async (message) => {
+      console.log("updates called...");
+      const { documentId, delta } = message;
+      server_socket.emit("updates", {
+        documentId: documentId,
+        delta: delta,
+        sId: socket.id,
+      });
+    });
+    socket.on("disconnect", async () => {
+      console.log("disconnect called...");
+      server_socket.emit("client-disconnect", {
+        sId: socket.id,
+      });
     });
   });
-  socket.on("join-document", async (message) => {
-    console.log("join document called...");
-    server_socket.emit("join-document", {
-      documentId: message.documentId,
-      sId: socket.id,
-    });
-  });
-  socket.on("updates", async (message) => {
-    console.log("updates called...");
-    const { documentId, delta } = message;
-    server_socket.emit("updates", {
-      documentId: documentId,
-      delta: delta,
-      sId: socket.id,
-    });
-  });
-  socket.on("disconnect", async () => {
-    console.log("disconnect called...");
-    server_socket.emit("client-disconnect", {
-      sId: socket.id,
-    });
-  });
-});
+
+}
+
+setupClientProxyConnection(ioserver, server_socket);
 
 app.get("/getDocumentList", (req, res) => {
   fetch(`${SERVER_ENDPOINT}/getDocumentList`)
