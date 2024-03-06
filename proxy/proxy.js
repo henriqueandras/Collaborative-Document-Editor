@@ -29,26 +29,44 @@ const listOfEndpoints = [
   "http://localhost:3003",
   "http://localhost:3004",
 ];
+let index = 0;
 
-let SERVER_ENDPOINT = listOfEndpoints.shift();
+function getNextEndpoint(index, endpoints){
+  if(index<listOfEndpoints.length && index>=0){
+    return endpoints[index];
+  }
+}
+
+let SERVER_ENDPOINT = getNextEndpoint(index,listOfEndpoints);
 
 let server_socket = io(SERVER_ENDPOINT);
-
+let shouldCallOnConnectError = true;
 function setupProxyServerConnection(server_socket){
   server_socket.on("connect", (sock) => {
     console.log("Connected to server");
   
     server_socket.on("leader-elected", (message) => {
-      server_socket.close();
+      attemptedCount = 0;
       const { endpoint } = message;
-      server_socket = io(endpoint);
-      SERVER_ENDPOINT = endpoint;
       console.log("NEW LEADER: ", endpoint);
-      setupProxyServerConnection(server_socket);
-      server_socket.on("connect_error", () => {
-        onConnectError(true);
-      });
-      setupClientProxyConnection(ioserver, server_socket);
+      if(SERVER_ENDPOINT !== endpoint){
+        shouldCallOnConnectError = false;
+        const server_socket2 = io(endpoint);
+        server_socket.close();
+        server_socket = server_socket2;
+        SERVER_ENDPOINT = endpoint;
+        shouldCallOnConnectError = false;
+        setupProxyServerConnection(server_socket);
+        // server_socket.on("connect_error", () => {
+        //   onConnectError(true);
+        // });
+        setupClientProxyConnection(ioserver, server_socket);
+        setTimeout(()=>{
+          shouldCallOnConnectError = true;
+        },100);
+      }else{
+        console.log("Did not re-assign");
+      }
     });
   
     server_socket.on("new-updates", async (message) => {
@@ -70,28 +88,39 @@ function setupProxyServerConnection(server_socket){
     });
   });
 
+  server_socket.on("connect_error", (err) => {
+    console.log(`Message: ${err.message}`);
+    if(shouldCallOnConnectError){
+      onConnectError(true);
+    }
+  });
 }
 
 setupProxyServerConnection(server_socket);
 
-function onConnectError(shouldInitiateElection) {
-  server_socket.close();
-  SERVER_ENDPOINT = listOfEndpoints.shift();
-  server_socket = io(SERVER_ENDPOINT);
-  if(shouldInitiateElection){
-    server_socket.emit("initiate-election",{
-      id:-1
-    });
-  }
-  setupProxyServerConnection(server_socket);
-  server_socket.on("connect_error", () => {
-    onConnectError(true);
-  });
+function synchronousWait(time){
+  const beg = Date.now();
+  while(Date.now()-beg<time){};
 }
 
-server_socket.on("connect_error", () => {
-  onConnectError(true);
-});
+function onConnectError(shouldInitiateElection) {
+  shouldCallOnConnectError = false;
+  console.log('server closed...');
+  server_socket.close();
+  shouldCallOnConnectError = true;
+  SERVER_ENDPOINT =  getNextEndpoint((++index)%listOfEndpoints.length,listOfEndpoints);
+  server_socket = io(SERVER_ENDPOINT);
+  console.log(SERVER_ENDPOINT);
+  server_socket.emit("initiate-election",{
+    id:-1
+  });
+  synchronousWait(100);
+  setupProxyServerConnection(server_socket);
+  // server_socket.on("connect_error", () => {
+  //   onConnectError(true);
+  // });
+}
+
 
 function setupClientProxyConnection(ioServer, server_socket){
   ioServer.on("connection", (socket) => {

@@ -26,7 +26,9 @@ connect();
 const defaultValue = { updates: [], text: [] };
 
 const currentEndpoint = `http://localhost:${PORT}`;
-// const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
+// const currentEndpoint = PORT===3001 
+//                         ? `http://localhost:${PORT}` 
+//                         : 'ws://4.tcp.us-cal-1.ngrok.io:12650';
 
 let otherServerSockets = [];
 const serverConnections = [];
@@ -48,8 +50,13 @@ const ioServer = require("socket.io")(http, {
 });
 
 listOfEndpoints.forEach((serverEndpoint) => {
-  if (!serverEndpoint.includes(String(PORT))) {
-    const socketServer = ioClient(serverEndpoint);
+  if (currentEndpoint !== serverEndpoint) {
+    console.log(serverEndpoint);
+    const socketServer = ioClient(serverEndpoint,{
+      extraHeaders:new Headers({
+        "ngrok-skip-browser-warning": "69420",
+      })
+    });
     createSocketListeners(socketServer);
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
@@ -127,13 +134,13 @@ function createSocketListeners(io) {
                   // socket.broadcast.emit("leader-elected", leader);
                   running = false;
                 } else {
-                  actualSocket.emit("initiate-election", {
+                  broadcastToAll("initiate-election", {
                     id:PORT
                   });
                 }
-              }, 5000);
+              }, 25);
             }
-          }, 5000);
+          }, 25);
         }
       }
       if (isTop) {
@@ -195,6 +202,11 @@ function createSocketListeners(io) {
     socket.on("client-disconnect", async (message) => {
       const { sId } = message;
       rooms.removeFromAnyOtherRoom(sId);
+    });
+
+    socket.on("connect_error",(err)=>{
+      socket.close();
+      console.log(err);
     });
   });
 }
