@@ -64,6 +64,9 @@ function broadcastToAll(event, message){
   for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
     actualSocket.emit(event, message);
   }
+  for (const sock of serverConnections){
+    sock.emit(event, message);
+  }
 }
 
 function createSocketListeners(io) {
@@ -99,6 +102,7 @@ function createSocketListeners(io) {
       for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
         const ports = serverEndpoint.split(":");
         if (ports[2] > endpointPORT) {
+          console.log("is not top")
           isTop = false;
           actualSocket.emit("initiate-election", {
             id:endpointPORT
@@ -132,12 +136,13 @@ function createSocketListeners(io) {
                     id:endpointPORT
                   });
                 }
-              }, 5000);
+              }, 100);
             }
-          }, 5000);
+          }, 100);
         }
       }
       if (isTop) {
+        console.log("is top")
         broadcastToAll("leader-elected",{
           leader: socket.id,
           endpoint: currentEndpoint,
