@@ -27,6 +27,7 @@ const defaultValue = { updates: [], text: [] };
 
 const currentEndpoint = `http://localhost:${PORT}`;
 // const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
+const endpointPORT = currentEndpoint.split(":")[2];
 
 let otherServerSockets = [];
 const serverConnections = [];
@@ -48,7 +49,7 @@ const ioServer = require("socket.io")(http, {
 });
 
 listOfEndpoints.forEach((serverEndpoint) => {
-  if (!serverEndpoint.includes(String(PORT))) {
+  if (!serverEndpoint.includes(String(endpointPORT))) {
     const socketServer = ioClient(serverEndpoint);
     createSocketListeners(socketServer);
     otherServerSockets.push({
@@ -90,17 +91,17 @@ function createSocketListeners(io) {
     socket.on("initiate-election", (message) => {
       leader = null;
       console.log('initiate-election called')
-      if(message.id<PORT){
+      if(message.id<endpointPORT){
         socket.emit("bully-message");
       }
       running = true;
       let isTop = true;
       for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
         const ports = serverEndpoint.split(":");
-        if (ports[2] > PORT) {
+        if (ports[2] > endpointPORT) {
           isTop = false;
           actualSocket.emit("initiate-election", {
-            id:PORT
+            id:endpointPORT
           });
           setTimeout(() => {
             if (!bullyReceived && !leader) {
@@ -128,7 +129,7 @@ function createSocketListeners(io) {
                   running = false;
                 } else {
                   actualSocket.emit("initiate-election", {
-                    id:PORT
+                    id:endpointPORT
                   });
                 }
               }, 5000);
