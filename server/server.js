@@ -173,9 +173,17 @@ function createSocketListeners(io) {
       const prev = await Document.findById(documentId);
       console.log("ops", JSON.stringify(delta.ops[1]));
       console.log("delta", JSON.stringify(delta));
+      let up = [];
+      let txt = [];
+      if(prev){
+        if(prev.data){
+          up = [...prev.data.updates];
+          txt = [...prev.data.text];
+        }
+      }
       const newData = {
-        updates: [...prev.data.updates, ...delta.ops],
-        text: [...prev.data.text, getInsertedDataFromQuill(delta)],
+        updates: [...up, ...delta.ops],
+        text: [...txt, getInsertedDataFromQuill(delta)],
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       socket.emit("new-updates", {
