@@ -192,10 +192,12 @@ function createSocketListeners(io) {
       rooms.addPermittedUsers(documentId, sId);
       const document = await Document.findById(documentId);
       console.log("document", document);
-      socket.emit("join-document-data", {
-        text: document.data.text,
-        sId: sId,
-      });
+      if(document){
+        socket.emit("join-document-data", {
+          text: document.data.text,
+          sId: sId,
+        });
+      }
     });
 
     socket.on("client-disconnect", async (message) => {
