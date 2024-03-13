@@ -154,7 +154,7 @@ function createSocketListeners(io) {
       }
     });
 
-    socket.on("create-document", async (message) => {
+    const handleCreateDocument = async (message) => {
       const { documentId, sId } = message;
       console.log("Hello", sId);
       rooms.removeFromAnyOtherRoom(sId);
@@ -163,14 +163,24 @@ function createSocketListeners(io) {
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
       await Document.create({ _id: documentId, data: defaultValue });
-    });
+    }
+
+    socket.on("create-document", handleCreateDocument);
 
     socket.on("updates", async (message) => {
+      console.log("RECIEVED UPDATES");
       const { documentId, delta, sId } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
       const prev = await Document.findById(documentId);
+
+      if(!prev){
+        handleCreateDocument({ 
+          documentId:documentId, 
+          sId:sId 
+        });
+      }
       console.log("ops", JSON.stringify(delta.ops[1]));
       console.log("delta", JSON.stringify(delta));
       let up = [];
@@ -194,13 +204,24 @@ function createSocketListeners(io) {
     });
 
     socket.on("join-document", async (message) => {
-      const { documentId, sId } = message;
+      const { documentId, sId, userId } = message;
       rooms.removeFromAnyOtherRoom(sId);
       rooms.addCurrentUsers(documentId, sId);
       rooms.addPermittedUsers(documentId, sId);
+      console.log("JOIN DOCUMENT", message);
       const document = await Document.findById(documentId);
       console.log("document", document);
       if(document){
+        socket.emit("join-document-data", {
+          text: document.data.text,
+          sId: sId,
+        });
+      }else{
+        handleCreateDocument({ 
+          documentId:documentId, 
+          sId:sId 
+        });
+        const document = await Document.findById(documentId);
         socket.emit("join-document-data", {
           text: document.data.text,
           sId: sId,

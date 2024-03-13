@@ -47,6 +47,7 @@ class Rooms{
         if(documentId in this.rooms){
             return this.rooms[documentId].currentUsers;
         }
+        return [];
     }
 
     removeFromAnyOtherRoom(user){

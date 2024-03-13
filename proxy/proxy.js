@@ -27,7 +27,7 @@ const listOfEndpoints = [
   "http://localhost:3001",
   "http://localhost:3002",
   "http://localhost:3003",
-  "http://localhost:3004",
+  "http://localhost:3004"
 ];
 
 let SERVER_ENDPOINT = listOfEndpoints.shift();
@@ -68,6 +68,14 @@ function setupProxyServerConnection(server_socket){
       console.log("join sId: ", sId);
       ioserver.to(sId).emit("join-document-data", text);
     });
+
+    server_socket.on("error_message",(message)=>{
+      const { err, resolution, sId } = message;
+      ioserver.to(sId).emit("error_message",{
+        err:err,
+        resolution:resolution
+      });
+    });
   });
 
 }
@@ -104,9 +112,10 @@ function setupClientProxyConnection(ioServer, server_socket){
       });
     });
     socket.on("join-document", async (message) => {
-      console.log("join document called...");
+      console.log("join document called...", message);
       server_socket.emit("join-document", {
         documentId: message.documentId,
+        userId: message.userId,
         sId: socket.id,
       });
     });
