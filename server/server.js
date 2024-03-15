@@ -176,10 +176,14 @@ function createSocketListeners(io) {
       const prev = await Document.findById(documentId);
 
       if(!prev){
-        handleCreateDocument({ 
-          documentId:documentId, 
-          sId:sId 
-        });
+        try{
+          handleCreateDocument({ 
+            documentId:documentId, 
+            sId:sId 
+          });
+        }catch(e){
+          console.log(e);
+        }
       }
       console.log("ops", JSON.stringify(delta.ops[1]));
       console.log("delta", JSON.stringify(delta));
@@ -217,10 +221,14 @@ function createSocketListeners(io) {
           sId: sId,
         });
       }else{
-        handleCreateDocument({ 
-          documentId:documentId, 
-          sId:sId 
-        });
+        try{
+          handleCreateDocument({ 
+            documentId:documentId, 
+            sId:sId 
+          });
+        }catch(e){
+          console.log(e);
+        }
         const document = await Document.findById(documentId);
         socket.emit("join-document-data", {
           text: document.data.text,
