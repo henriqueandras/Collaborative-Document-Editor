@@ -177,7 +177,7 @@ function createSocketListeners(io) {
 
       if(!prev){
         try{
-          handleCreateDocument({ 
+          await handleCreateDocument({ 
             documentId:documentId, 
             sId:sId 
           });
@@ -222,12 +222,12 @@ function createSocketListeners(io) {
         });
       }else{
         try{
-          handleCreateDocument({ 
+          await handleCreateDocument({ 
             documentId:documentId, 
             sId:sId 
           });
         }catch(e){
-          console.log(e);
+          console.log(`ERROR:${e}`);
         }
         const document = await Document.findById(documentId);
         socket.emit("join-document-data", {
