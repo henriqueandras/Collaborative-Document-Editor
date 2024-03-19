@@ -4,11 +4,16 @@ import "./styles.css";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
+import { v4 as uuid } from "uuid";
 
 export const Document = () => {
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
+  const [ err, setErr ] = useState({
+    error:"",
+    resolution:""
+  });
   const socket = useContext(SocketClient);
 
   const handlerUpdateContent = (delta) => {
@@ -21,6 +26,14 @@ export const Document = () => {
     quill.setContents(delta);
   };
 
+  const handleErrorMessage = (message) => {
+    const { err:errorMessage, resolution } = message;
+    setErr({
+      error:errorMessage,
+      resolution:resolution
+    });
+  }
+
   useEffect(() => {
     console.log("something changes");
     if (socket.socket == null || quill == null) return;
@@ -28,11 +41,14 @@ export const Document = () => {
     socket.socket.on("new-updates", handlerUpdateContent);
 
     socket.socket.on("join-document-data", handlerSetContent);
+    socket.socket.on("error_message", handleErrorMessage);
   }, [socket, quill]);
 
   useEffect(() => {
+    
     socket.socket.emit("join-document", {
       documentId: documentId,
+      userId: uuid()
     });
   }, [socket]);
 
@@ -64,6 +80,9 @@ export const Document = () => {
   }, []);
 
   if (!documentId) return <h1>No such document exists</h1>;
-
+  if (err.error) return <div>
+    <h1>Error: {err.error}</h1>
+    <h1>Resolution: {err.resolution}</h1>
+  </div>
   return <div className="document" ref={wrapperRef}></div>;
 };

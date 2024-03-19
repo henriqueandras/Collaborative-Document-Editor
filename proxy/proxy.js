@@ -23,65 +23,125 @@ const ioserver = require("socket.io")(http, {
   },
 });
 
-const server_socket = io("http://localhost:3001");
+const listOfEndpoints = [
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004"
+];
 
-server_socket.on("connect", () => {
-  console.log("Connected to server");
+let SERVER_ENDPOINT = listOfEndpoints.shift();
 
-  server_socket.on("new-updates", async (message) => {
-    const { delta, userList, senderId } = message;
-    userList.map((sock) => {
-      console.log(delta, sock);
-      // console.log(io.sockets);
-      if (sock !== senderId) {
-        ioserver.to(sock).emit("new-updates", delta);
-      }
+let server_socket = io(SERVER_ENDPOINT);
+
+function setupProxyServerConnection(server_socket){
+  server_socket.on("connect", (sock) => {
+    console.log("Connected to server");
+  
+    server_socket.on("leader-elected", (message) => {
+      server_socket.close();
+      const { endpoint } = message;
+      server_socket = io(endpoint);
+      SERVER_ENDPOINT = endpoint;
+      console.log("NEW LEADER: ", endpoint);
+      setupProxyServerConnection(server_socket);
+      server_socket.on("connect_error", () => {
+        onConnectError(true);
+      });
+      setupClientProxyConnection(ioserver, server_socket);
+    });
+  
+    server_socket.on("new-updates", async (message) => {
+      const { delta, userList, senderId } = message;
+      userList.map((sock) => {
+        console.log(delta, sock);
+        // console.log(io.sockets);
+        if (sock !== senderId) {
+          ioserver.to(sock).emit("new-updates", delta);
+        }
+      });
+    });
+  
+    server_socket.on("join-document-data", async (message) => {
+      const { text, sId } = message;
+      console.log("join message: ", message);
+      console.log("join sId: ", sId);
+      ioserver.to(sId).emit("join-document-data", text);
+    });
+
+    server_socket.on("error_message",(message)=>{
+      const { err, resolution, sId } = message;
+      ioserver.to(sId).emit("error_message",{
+        err:err,
+        resolution:resolution
+      });
     });
   });
 
-  server_socket.on("join-document-data", async (message) => {
-    const { text, sId } = message;
-    console.log("join message: ", message);
-    console.log("join sId: ", sId);
-    ioserver.to(sId).emit("join-document-data", text);
+}
+
+setupProxyServerConnection(server_socket);
+
+function onConnectError(shouldInitiateElection) {
+  server_socket.close();
+  SERVER_ENDPOINT = listOfEndpoints.shift();
+  server_socket = io(SERVER_ENDPOINT);
+  if(shouldInitiateElection){
+    server_socket.emit("initiate-election",{
+      id:-1
+    });
+  }
+  setupProxyServerConnection(server_socket);
+  server_socket.on("connect_error", () => {
+    onConnectError(true);
   });
+}
+
+server_socket.on("connect_error", () => {
+  onConnectError(true);
 });
 
-ioserver.on("connection", (socket) => {
-  console.log("A client connected!");
-  socket.on("create-document", async (message) => {
-    console.log("create document called...");
-    server_socket.emit("create-document", {
-      documentId: message.documentId,
-      sId: socket.id,
+function setupClientProxyConnection(ioServer, server_socket){
+  ioServer.on("connection", (socket) => {
+    console.log("A client connected!");
+    socket.on("create-document", async (message) => {
+      console.log("create document called...");
+      server_socket.emit("create-document", {
+        documentId: message.documentId,
+        sId: socket.id,
+      });
+    });
+    socket.on("join-document", async (message) => {
+      console.log("join document called...", message);
+      server_socket.emit("join-document", {
+        documentId: message.documentId,
+        userId: message.userId,
+        sId: socket.id,
+      });
+    });
+    socket.on("updates", async (message) => {
+      console.log("updates called...");
+      const { documentId, delta } = message;
+      server_socket.emit("updates", {
+        documentId: documentId,
+        delta: delta,
+        sId: socket.id,
+      });
+    });
+    socket.on("disconnect", async () => {
+      console.log("disconnect called...");
+      server_socket.emit("client-disconnect", {
+        sId: socket.id,
+      });
     });
   });
-  socket.on("join-document", async (message) => {
-    console.log("join document called...");
-    server_socket.emit("join-document", {
-      documentId: message.documentId,
-      sId: socket.id,
-    });
-  });
-  socket.on("updates", async (message) => {
-    console.log("updates called...");
-    const { documentId, delta } = message;
-    server_socket.emit("updates", {
-      documentId: documentId,
-      delta: delta,
-      sId: socket.id,
-    });
-  });
-  socket.on("disconnect", async () => {
-    console.log("disconnect called...");
-    server_socket.emit("client-disconnect", {
-      sId: socket.id,
-    });
-  });
-});
+
+}
+
+setupClientProxyConnection(ioserver, server_socket);
 
 app.get("/getDocumentList", (req, res) => {
-  fetch("http://localhost:3001/getDocumentList")
+  fetch(`${SERVER_ENDPOINT}/getDocumentList`)
     .then((result) => {
       if (result.ok) return result.json();
       else throw new Error("fetch failed!");

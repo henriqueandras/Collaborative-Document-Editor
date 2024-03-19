@@ -13,9 +13,9 @@ export const MainMenu = () => {
       <Button
         style={{ display: "block", margin: "auto", width: "20vw" }}
         variant="outlined"
-        onClick={() => {
+        onClick={async() => {
           const documentId = uuid();
-          socket.socket.emit("create-document", {
+          await socket.socket.emit("create-document", {
             documentId: documentId,
           });
           navigate(`document?id=${documentId}`);
