@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const DB_PORT = 27019;
+const DB_PORT = 27017;
 
 const mongodbEndpoint = process.env.DB_ENDPOINT || `mongodb://localhost:${DB_PORT}`;
 
