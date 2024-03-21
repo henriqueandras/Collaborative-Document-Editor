@@ -169,7 +169,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId } = message;
+      const { documentId, delta, sId, content } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -198,6 +198,7 @@ function createSocketListeners(io) {
       const newData = {
         updates: [...up, ...delta.ops],
         text: [...txt, getInsertedDataFromQuill(delta)],
+        content: content
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       socket.emit("new-updates", {
@@ -217,7 +218,7 @@ function createSocketListeners(io) {
       console.log("document", document);
       if(document){
         socket.emit("join-document-data", {
-          text: document.data.text,
+          text: document.data.content,
           sId: sId,
         });
       }else{
@@ -231,7 +232,7 @@ function createSocketListeners(io) {
         }
         const document = await Document.findById(documentId);
         socket.emit("join-document-data", {
-          text: document.data.text,
+          text: document.data.content,
           sId: sId,
         });
       }
