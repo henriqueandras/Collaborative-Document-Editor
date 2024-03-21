@@ -29,3 +29,10 @@ or
 npm run dev <PORT_NUMBER>  // specify port to PORT_NUMBER
 eg. npm run dev 4000
 ```
+
+Enter the PORT that will be exposed on local host
+```
+docker build . -t monogtest<PORT> -f ./Dockerfile.mongo --build-arg arg=<PORT>
+
+docker run --detach --name=mongotest<PORT> --publish <PORT>:27017 monogtest<PORT>
+```
