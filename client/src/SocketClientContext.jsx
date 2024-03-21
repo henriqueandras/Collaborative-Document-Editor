@@ -7,7 +7,7 @@ export const SocketClient = createContext(null);
 
 export default function SocketClientContext({ children }) {
   const [clientSocket, setClientSocket] = useState({
-    address:"ws://localhost:1892",
+    address:"http://localhost:1892",
     socket: io("ws://localhost:1892", {
       extraHeaders: new Headers({
         "ngrok-skip-browser-warning": "69420",
@@ -23,7 +23,7 @@ export default function SocketClientContext({ children }) {
         }),
       });
       setClientSocket({
-        address:"ws://localhost:1893",
+        address:"http://localhost:1893",
         socket: socket2
       });
     });
