@@ -5,6 +5,7 @@ const { connect } = require("./Database/db");
 const Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
+const { lockDocument, unlockDocument, isLocked } = require('./locks');
 
 const app = express();
 const http = require("http").Server(app);
@@ -25,17 +26,14 @@ const rooms = new Rooms();
 connect();
 const defaultValue = { updates: [], text: [] };
 
-const currentEndpoint = `http://localhost:${PORT}`;
-// const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
+// const currentEndpoint = `http://localhost:${PORT}`;
+const currentEndpoint = 'ws://10.15.192.137:3002';
 const endpointPORT = currentEndpoint.split(":")[2];
 
 let otherServerSockets = [];
 const serverConnections = [];
 const listOfEndpoints = [
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "http://localhost:3003",
-  "http://localhost:3004",
+  currentEndpoint,
 ];
 let running = false;
 let bullyReceived = false;
@@ -48,9 +46,25 @@ const ioServer = require("socket.io")(http, {
   },
 });
 
+socket.on('lock', ({ documentId, userId }) => {
+  lockDocument(documentId, userId);
+});
+
+socket.on('unlock', ({ documentId }) => {
+  unlockDocument(documentId);
+});
+
+socket.on('checkLock', ({ documentId, userId }, callback) => {
+  callback({ locked: isLocked(documentId, userId) });
+});
+
 listOfEndpoints.forEach((serverEndpoint) => {
   if (!serverEndpoint.includes(String(endpointPORT))) {
-    const socketServer = ioClient(serverEndpoint);
+    const socketServer = ioClient(serverEndpoint, {
+      extraHeaders: new Headers({
+        "ngrok-skip-browser-warning": "69420",
+      }),
+    });
     createSocketListeners(socketServer);
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
