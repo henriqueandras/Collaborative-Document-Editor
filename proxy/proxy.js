@@ -27,17 +27,17 @@ const listOfEndpoints = [
   "http://localhost:3001",
   "http://localhost:3002",
   "http://localhost:3003",
-  "http://localhost:3004"
+  "http://localhost:3004",
 ];
 
 let SERVER_ENDPOINT = listOfEndpoints.shift();
 
 let server_socket = io(SERVER_ENDPOINT);
 
-function setupProxyServerConnection(server_socket){
+function setupProxyServerConnection(server_socket) {
   server_socket.on("connect", (sock) => {
     console.log("Connected to server");
-  
+
     server_socket.on("leader-elected", (message) => {
       server_socket.close();
       const { endpoint } = message;
@@ -50,7 +50,7 @@ function setupProxyServerConnection(server_socket){
       });
       setupClientProxyConnection(ioserver, server_socket);
     });
-  
+
     server_socket.on("new-updates", async (message) => {
       const { delta, userList, senderId } = message;
       userList.map((sock) => {
@@ -61,7 +61,16 @@ function setupProxyServerConnection(server_socket){
         }
       });
     });
-  
+    server_socket.on("cursor-position-updates", async (message) => {
+      console.log(message.position);
+      const { position, userList, senderId } = message;
+      userList.map((sock) => {
+        if (sock !== senderId) {
+          ioserver.to(sock).emit("cursor-position-updates", position);
+        }
+      });
+    });
+
     server_socket.on("join-document-data", async (message) => {
       const { text, sId } = message;
       console.log("join message: ", message);
@@ -69,15 +78,14 @@ function setupProxyServerConnection(server_socket){
       ioserver.to(sId).emit("join-document-data", text);
     });
 
-    server_socket.on("error_message",(message)=>{
+    server_socket.on("error_message", (message) => {
       const { err, resolution, sId } = message;
-      ioserver.to(sId).emit("error_message",{
-        err:err,
-        resolution:resolution
+      ioserver.to(sId).emit("error_message", {
+        err: err,
+        resolution: resolution,
       });
     });
   });
-
 }
 
 setupProxyServerConnection(server_socket);
@@ -86,9 +94,9 @@ function onConnectError(shouldInitiateElection) {
   server_socket.close();
   SERVER_ENDPOINT = listOfEndpoints.shift();
   server_socket = io(SERVER_ENDPOINT);
-  if(shouldInitiateElection){
-    server_socket.emit("initiate-election",{
-      id:-1
+  if (shouldInitiateElection) {
+    server_socket.emit("initiate-election", {
+      id: -1,
     });
   }
   setupProxyServerConnection(server_socket);
@@ -101,7 +109,7 @@ server_socket.on("connect_error", () => {
   onConnectError(true);
 });
 
-function setupClientProxyConnection(ioServer, server_socket){
+function setupClientProxyConnection(ioServer, server_socket) {
   ioServer.on("connection", (socket) => {
     console.log("A client connected!");
     socket.on("create-document", async (message) => {
@@ -128,6 +136,13 @@ function setupClientProxyConnection(ioServer, server_socket){
         sId: socket.id,
       });
     });
+    socket.on("cursor-position", async (message) => {
+      server_socket.emit("cursor-position", {
+        sId: socket.id,
+        documentId: message.documentId,
+        messageTest: message.messageTest,
+      });
+    });
     socket.on("disconnect", async () => {
       console.log("disconnect called...");
       server_socket.emit("client-disconnect", {
@@ -135,7 +150,6 @@ function setupClientProxyConnection(ioServer, server_socket){
       });
     });
   });
-
 }
 
 setupClientProxyConnection(ioserver, server_socket);

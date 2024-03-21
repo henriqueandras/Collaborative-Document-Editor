@@ -5,14 +5,17 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
+import QuillCursors from "quill-cursors";
+Quill.register("modules/cursors", QuillCursors);
 
 export const Document = () => {
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
-  const [ err, setErr ] = useState({
-    error:"",
-    resolution:""
+  const [cursor, setCursor] = useState();
+  const [err, setErr] = useState({
+    error: "",
+    resolution: "",
   });
   const socket = useContext(SocketClient);
 
@@ -27,12 +30,12 @@ export const Document = () => {
   };
 
   const handleErrorMessage = (message) => {
-    const { err:errorMessage, resolution } = message;
+    const { err: errorMessage, resolution } = message;
     setErr({
-      error:errorMessage,
-      resolution:resolution
+      error: errorMessage,
+      resolution: resolution,
     });
-  }
+  };
 
   useEffect(() => {
     console.log("something changes");
@@ -45,12 +48,31 @@ export const Document = () => {
   }, [socket, quill]);
 
   useEffect(() => {
-    
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: uuid(),
     });
   }, [socket]);
+
+  useEffect(() => {
+    if (socket == null || quill != null) {
+      const cursors = quill.getModule("cursors");
+      let cursor_name = "user " + String(socket.id);
+      let cursor = cursors.createCursor(socket.id, cursor_name, "red");
+      setCursor(cursor);
+    }
+  }, [quill]);
+
+  useEffect(() => {
+    if (documentId == null || quill == null || socket == null) return;
+    const fn = () => {
+      socket.socket.emit("cursor-position", {
+        documentId: documentId,
+        messageTest: "Hello",
+      });
+    };
+    setInterval(fn, 2000);
+  }, [socket, quill, documentId]);
 
   useEffect(() => {
     if (quill == null || socket.socket == null || documentId == null) return;
@@ -73,6 +95,12 @@ export const Document = () => {
     const q = new Quill(editor, {
       modules: {
         toolbar: [[{ header: [1, 2, false] }], ["bold", "italic", "underline"]],
+        cursors: {
+          hideDelayMs: 5000,
+          hideSpeedMs: 0,
+          selectionChangeSource: null,
+          transformOnTextChange: true,
+        },
       },
       theme: "snow", // or 'bubble'
     });
@@ -80,9 +108,12 @@ export const Document = () => {
   }, []);
 
   if (!documentId) return <h1>No such document exists</h1>;
-  if (err.error) return <div>
-    <h1>Error: {err.error}</h1>
-    <h1>Resolution: {err.resolution}</h1>
-  </div>
+  if (err.error)
+    return (
+      <div>
+        <h1>Error: {err.error}</h1>
+        <h1>Resolution: {err.resolution}</h1>
+      </div>
+    );
   return <div className="document" ref={wrapperRef}></div>;
 };
