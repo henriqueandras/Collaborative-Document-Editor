@@ -5,9 +5,13 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
+import OperationalTransform from "../OperationalTransform/OperationalTransform";
 
 export const Document = () => {
+  const ot = new OperationalTransform();
+  // const defaultTransform = {ops:[{retain:0},{insert:''}]};
   const [searchParams] = useSearchParams();
+  const [ prevTransform, setPrevTransform ] = useState("BEG");
   const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
   const [ err, setErr ] = useState({
@@ -18,7 +22,10 @@ export const Document = () => {
 
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
-    quill.updateContents(delta.ops);
+    const newReceivedTransforms = ot.handleTransforms(prevTransform, delta);
+    newReceivedTransforms.forEach((newReceivedTransform)=>{
+      quill.updateContents(newReceivedTransform.ops);
+    });
   };
 
   const handlerSetContent = (delta) => {
@@ -56,7 +63,7 @@ export const Document = () => {
     if (quill == null || socket.socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        console.log(quill.getContents());
+        console.log(delta);
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
         socket.socket.emit("updates", {
@@ -64,6 +71,7 @@ export const Document = () => {
           delta: delta,
           content: quillContent
         });
+        setPrevTransform(ot.ensureStructure(delta));
       }
     });
   }, [socket, quill]);
