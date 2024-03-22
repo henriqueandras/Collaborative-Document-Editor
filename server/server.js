@@ -16,6 +16,7 @@ app.use(cors());
 let PORT = 3001;
 // const RANK = 0;
 let useLocalDb = false;
+let MONGO_PORT = 27017;
 
 if (process.argv.length >= 3) {
   PORT = Number.parseInt(process.argv[2]);
@@ -26,12 +27,14 @@ if (process.argv.length >= 4){
   if (process.argv[3] == "local"){
     Document = require('./Database/LocalDb/localDb');
     useLocalDb = true;
+  }else if(Number.isInteger(Number(process.argv[3]))){
+    MONGO_PORT = Number(process.argv[3]);
   }
 }
 
 const rooms = new Rooms();
 if(!useLocalDb){
-  connect();
+  connect(MONGO_PORT);
 }else{
   console.log("Running local in-mem db")
 }
