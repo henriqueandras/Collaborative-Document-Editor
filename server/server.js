@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const Rooms = require("./Rooms/rooms");
 const { connect } = require("./Database/db");
-const Document = require("./Database/Document/Document");
+let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
 
@@ -15,14 +15,29 @@ app.use(cors());
 
 let PORT = 3001;
 // const RANK = 0;
+let useLocalDb = false;
+let MONGO_PORT = 27017;
 
-if (process.argv.length === 3) {
+if (process.argv.length >= 3) {
   PORT = Number.parseInt(process.argv[2]);
   // RANK = Number.parseInt(process.argv[3]);
 }
 
+if (process.argv.length >= 4){
+  if (process.argv[3] == "local"){
+    Document = require('./Database/LocalDb/localDb');
+    useLocalDb = true;
+  }else if(Number.isInteger(Number(process.argv[3]))){
+    MONGO_PORT = Number(process.argv[3]);
+  }
+}
+
 const rooms = new Rooms();
-connect();
+if(!useLocalDb){
+  connect(MONGO_PORT);
+}else{
+  console.log("Running local in-mem db")
+}
 const defaultValue = { updates: [], text: [] };
 
 const currentEndpoint = `http://localhost:${PORT}`;
@@ -186,7 +201,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId } = message;
+      const { documentId, delta, sId, content } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -215,6 +230,7 @@ function createSocketListeners(io) {
       const newData = {
         updates: [...up, ...delta.ops],
         text: [...txt, getInsertedDataFromQuill(delta)],
+        content: content
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       socket.emit("new-updates", {
@@ -234,7 +250,7 @@ function createSocketListeners(io) {
       console.log("document", document);
       if(document){
         socket.emit("join-document-data", {
-          text: document.data.text,
+          text: document.data.content,
           sId: sId,
         });
       }else{
@@ -248,7 +264,7 @@ function createSocketListeners(io) {
         }
         const document = await Document.findById(documentId);
         socket.emit("join-document-data", {
-          text: document.data.text,
+          text: document.data.content,
           sId: sId,
         });
       }

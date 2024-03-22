@@ -1,11 +1,8 @@
 const mongoose = require('mongoose');
 
-const DB_PORT = 27018;
-
-const mongodbEndpoint = process.env.DB_ENDPOINT || `mongodb://localhost:${DB_PORT}`;
-
-async function connect(){
+async function connect(DB_PORT = 27017){
     try{
+        const mongodbEndpoint = process.env.DB_ENDPOINT || `mongodb://localhost:${DB_PORT}`;
         await mongoose.connect(mongodbEndpoint);
         console.log("Connected to DB")
     }catch(e){

@@ -30,9 +30,24 @@ npm run dev <PORT_NUMBER>  // specify port to PORT_NUMBER
 eg. npm run dev 4000
 ```
 
+Running server with in-memory storage
+Run with port and "local" flag
+```
+npm run server.js 3002 local
+```
+
+
+Running multiple local mongo db instances
+
 Enter the PORT that will be exposed on local host
 ```
 docker build . -t monogtest<PORT> -f ./Dockerfile.mongo --build-arg arg=<PORT>
 
 docker run --detach --name=mongotest<PORT> --publish <PORT>:27017 monogtest<PORT>
+```
+
+OR
+
+```
+npm run buildMultipleMongo <COUNT_OF_MONGO_DB_INSTANCES>
 ```

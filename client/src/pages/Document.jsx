@@ -57,9 +57,12 @@ export const Document = () => {
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log(quill.getContents());
+        const quillContent = quill.getContents();
+        console.log("quillContent", quillContent);
         socket.socket.emit("updates", {
           documentId: documentId,
           delta: delta,
+          content: quillContent
         });
       }
     });
