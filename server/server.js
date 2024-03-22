@@ -34,8 +34,8 @@ const serverConnections = [];
 const listOfEndpoints = [
   "http://localhost:3001",
   "http://localhost:3002",
-  "http://localhost:3003",
-  "http://localhost:3004",
+  // "http://localhost:3003",
+  // "http://localhost:3004",
 ];
 let running = false;
 let bullyReceived = false;
@@ -75,6 +75,22 @@ function createSocketListeners(io) {
       serverConnections.push(socket);
     }
     console.log("A client connected!");
+
+    // middleware
+    socket.use(([event, ...args], next) => {
+      if(event === 'create-document' || event === 'updates' || event === 'join-document' || 
+         event === 'client-disconnect')
+      {
+        console.log(`middleware called on event ${event}`);
+        if(!rooms.getProxySID() || rooms.getProxySID() != socket.id)
+        {
+          console.log("New proxy, clearing rooms...")
+          rooms.setProxySID(socket.id);
+          rooms.removeAllCurrentUsers();
+        }
+      }
+      next();
+    });
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
@@ -162,6 +178,7 @@ function createSocketListeners(io) {
       rooms.addPermittedUsers(documentId, sId);
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
       await Document.create({ _id: documentId, data: defaultValue });
     }
 
@@ -235,11 +252,13 @@ function createSocketListeners(io) {
           sId: sId,
         });
       }
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
     });
 
     socket.on("client-disconnect", async (message) => {
       const { sId } = message;
       rooms.removeFromAnyOtherRoom(sId);
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
     });
   });
 }
