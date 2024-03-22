@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const Rooms = require("./Rooms/rooms");
 const { connect } = require("./Database/db");
-const Document = require("./Database/Document/Document");
+let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
 
@@ -15,14 +15,26 @@ app.use(cors());
 
 let PORT = 3001;
 // const RANK = 0;
+let useLocalDb = false;
 
-if (process.argv.length === 3) {
+if (process.argv.length >= 3) {
   PORT = Number.parseInt(process.argv[2]);
   // RANK = Number.parseInt(process.argv[3]);
 }
 
+if (process.argv.length >= 4){
+  if (process.argv[3] == "local"){
+    Document = require('./Database/LocalDb/localDb');
+    useLocalDb = true;
+  }
+}
+
 const rooms = new Rooms();
-connect();
+if(!useLocalDb){
+  connect();
+}else{
+  console.log("Running local in-mem db")
+}
 const defaultValue = { updates: [], text: [] };
 
 const currentEndpoint = `http://localhost:${PORT}`;
