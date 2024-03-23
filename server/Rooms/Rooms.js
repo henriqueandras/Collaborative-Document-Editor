@@ -16,6 +16,10 @@ class Rooms{
         return Object.keys(this.rooms);
     }
 
+    includesDocument(documentId){
+        return Object.keys(this.rooms).includes(documentId);
+    }
+
     createRoom(documentId){
         this.rooms[documentId] = {
             permittedUsers:[],

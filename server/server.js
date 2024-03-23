@@ -6,6 +6,8 @@ let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
 
+const synchronizer = require("./Database/SyncDoc")
+
 const app = express();
 const http = require("http").Server(app);
 
@@ -66,7 +68,7 @@ const ioServer = require("socket.io")(http, {
 listOfEndpoints.forEach((serverEndpoint) => {
   if (!serverEndpoint.includes(String(endpointPORT))) {
     const socketServer = ioClient(serverEndpoint);
-    createSocketListeners(socketServer);
+    // createSocketListeners(socketServer);
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
       sockId: socketServer.id,
@@ -106,6 +108,9 @@ function createSocketListeners(io) {
       }
       next();
     });
+
+    // Set up socket for synchronization
+    synchronizer.setupSocketForSync(socket, Document);
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
@@ -194,7 +199,8 @@ function createSocketListeners(io) {
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
       console.log(`current users: ${rooms.getAllCurrentUsers()}`);
-      await Document.create({ _id: documentId, data: defaultValue });
+      // await Document.create({ _id: documentId, data: defaultValue });
+      await synchronizer.syncCreateDocument(Document, {id: documentId, data: defaultValue}, otherServerSockets);
     }
 
     socket.on("create-document", handleCreateDocument);
@@ -232,7 +238,8 @@ function createSocketListeners(io) {
         text: [...txt, getInsertedDataFromQuill(delta)],
         content: content
       };
-      await Document.findByIdAndUpdate(documentId, { data: newData });
+      // await Document.findByIdAndUpdate(documentId, { data: newData });
+      await synchronizer.syncFindByIdAndUpdate(Document, {id: documentId, data: newData}, otherServerSockets);
       socket.emit("new-updates", {
         delta: delta,
         userList: userList,
@@ -242,13 +249,19 @@ function createSocketListeners(io) {
 
     socket.on("join-document", async (message) => {
       const { documentId, sId, userId } = message;
-      rooms.removeFromAnyOtherRoom(sId);
-      rooms.addCurrentUsers(documentId, sId);
-      rooms.addPermittedUsers(documentId, sId);
       console.log("JOIN DOCUMENT", message);
       const document = await Document.findById(documentId);
       console.log("document", document);
       if(document){
+        if(!rooms.includesDocument(documentId))
+        {
+          rooms.createRoom(documentId);
+        }
+
+        rooms.removeFromAnyOtherRoom(sId);
+        rooms.addCurrentUsers(documentId, sId);
+        rooms.addPermittedUsers(documentId, sId);
+
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,

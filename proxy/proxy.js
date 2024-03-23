@@ -47,6 +47,20 @@ function setupProxyServerConnection(server_socket){
         onConnectError(true);
       });
       setupClientProxyConnection(ioserver, server_socket);
+
+      // on new primary server:
+      //  - reset all connected client socket listeners.
+      //  - ask client to rejoin document.
+      server_socket.on("connect", (sock) => {
+        ioserver.fetchSockets().then(sockets => {
+        console.log("\n\nRequesting all clients to rejoin...")
+        for (const socket of sockets) {
+          socket.removeAllListeners();
+          setupClientSocket(socket, server_socket);
+          socket.emit("rejoin-doc", null);
+        }
+        });
+      });
     });
   
     server_socket.on("new-updates", async (message) => {
@@ -99,9 +113,7 @@ server_socket.on("connect_error", () => {
   onConnectError(true);
 });
 
-function setupClientProxyConnection(ioServer, server_socket){
-  ioServer.on("connection", (socket) => {
-    console.log("A client connected!");
+function setupClientSocket(socket, server_socket){
     socket.on("create-document", async (message) => {
       console.log("create document called...");
       server_socket.emit("create-document", {
@@ -133,6 +145,12 @@ function setupClientProxyConnection(ioServer, server_socket){
         sId: socket.id,
       });
     });
+}
+
+function setupClientProxyConnection(ioServer, server_socket){
+  ioServer.on("connection", (socket) => {
+    console.log("A client connected!");
+    setupClientSocket(socket, server_socket);
   });
 
 }
