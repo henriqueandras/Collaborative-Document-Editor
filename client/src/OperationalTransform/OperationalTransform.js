@@ -1,6 +1,32 @@
 class OperationalTransform{
-    constructor(){}
+    constructor(str){
+        this.str = str;
+    }
+    
+    apply(operation){
+        const action = this.getAction(operation);
+        const retain = operation.ops[0].retain;
+        switch(action){
+            case "insert":
+                if(retain<this.str.length){
+                    this.str = this.str.substring(0,retain) + operation.ops[1].insert + this.str.substring(retain,this.str.length);
+                }else{
+                    this.str = this.str + operation.ops[1].insert;
+                }
+                break;
+            case "delete":
+                if(retain<this.str.length){
+                    const count = operation.ops[1].delete;
+                    this.str = this.str.substring(0,retain) + this.str.substring(retain+count, this.str.length);
+                }
+                break;
+        }
+    }
+    
 /**delta {"ops":[{"retain":16},{"insert":"d"}]} */
+/**delta {"ops":[{"retain":16},{"delete":2}]} */
+
+
     getAction(data){
         //Action is either "insert" or "delete"
         const actionEl = data.ops[1];
@@ -25,15 +51,42 @@ class OperationalTransform{
         }
         else if(oldAction === "delete" && newDataAction === "insert"){
             const oldDelete = old.ops[1].delete;
-            newData.ops[0].retain = newData.ops[0].retain - oldDelete;
+            const oldRetain = old.ops[0].retain;
+            const newRetain = newData.ops[0].retain;
+            if(oldRetain+oldDelete>newRetain){
+                newData.ops[0].retain = oldRetain;
+            }else{
+                newData.ops[0].retain = newData.ops[0].retain - oldDelete;
+            }
+
         }
         else if(oldAction === "delete" && newDataAction === "delete"){
+            // const oldDelete = old.ops[1].delete;
+            // newData.ops[0].retain = newData.ops[0].retain - oldDelete;
+            // "gibberish"
+            //  012345678
+            const oldRetain = old.ops[0].retain;
+            const newRetain = newData.ops[0].retain;
             const oldDelete = old.ops[1].delete;
-            newData.ops[0].retain = newData.ops[0].retain - oldDelete;
+            const newDelete = newData.ops[1].delete;
+            console.log('old',oldRetain, oldDelete);
+            console.log('new',newRetain, newDelete)
+            if(newRetain> oldRetain && (newDelete + newRetain) <=( oldRetain + oldDelete)){
+                return [[],old];
+            }
+            else if(newRetain> oldRetain && oldRetain + oldDelete <= newRetain){
+                newData.ops[0].retain = newRetain - oldDelete;
+            }
+            else if(newRetain> oldRetain && oldRetain + oldDelete > newRetain && newRetain + newDelete > oldRetain + oldDelete){
+                    newData.ops[1].delete = (newRetain + newDelete) - (oldRetain + oldDelete);
+                    newData.ops[0].retain = oldRetain;
+            }
+            // return [newData];
         }
-        return [newData];
+        return [[newData], newData];
     }
     
+
     transformGreaterThan(old, newData){
         const oldAction = this.getAction(old);
         const newDataAction = this.getAction(newData);
@@ -41,20 +94,38 @@ class OperationalTransform{
             const oldRetain = old.ops[0].retain;
             const newRetain = newData.ops[0].retain;
             const newDelete = newData.ops[1].delete;
-            if((newRetain + newDelete >= oldRetain) && (newRetain<oldRetain)){
-                const reducedDelete = oldRetain - newDelete;
+            
+            
+            // giBerish
+            // giBerish
+            if((newRetain + newDelete > oldRetain) && (newRetain<oldRetain)){
+                const reducedDelete = oldRetain - newRetain;
                 const newDataOps = [
                     {ops:[{"retain":newData.ops[0].retain},{"delete":reducedDelete}]},
-                    {ops:[{"retain":oldRetain},{"delete":newDelete-reducedDelete}]}
+                    {ops:[{"retain":newRetain+1},{"delete":newDelete-reducedDelete}]}
                 ];
-                return newDataOps;
+                return [newDataOps, {ops:[{"retain":newData.ops[0].retain},{"delete":newDelete}]}];
             }
-            return [newData];
+            return [[newData], newData];
+        }
+        else if((oldAction === "delete" && newDataAction === "delete")){
+            const oldRetain = old.ops[0].retain;
+            const newRetain = newData.ops[0].retain;
+            const newDelete = newData.ops[1].delete;
+            const oldDelete = old.ops[1].delete;
+            if(newRetain<oldRetain && newRetain + newDelete <= oldRetain){
+                return [[newData], newData]
+            }else if(newRetain<oldRetain && (newRetain + newDelete) > oldRetain && (newRetain + newDelete) < (oldRetain + oldDelete)){
+                newData.ops[1].delete = oldRetain - newRetain
+            }else if(newRetain<oldRetain && (newRetain + newDelete) >= (oldRetain + oldDelete)){
+                newData.ops[1].delete = (oldRetain - newRetain) + ((newRetain + newDelete) - (oldRetain + oldDelete))
+            }
+            return [[newData], newData]
         }
         else if((oldAction === "insert" && newDataAction === "insert")
            || (oldAction === "delete" && newDataAction === "insert")
-           || (oldAction === "delete" && newDataAction === "delete")){
-               return [newData];
+           ){
+               return [[newData], newData];
         }
     }
 
@@ -64,31 +135,34 @@ class OperationalTransform{
         const newDataAction = this.getAction(newData);
         if(oldAction === "insert" && newDataAction === "insert"){
             // break by process ids
+            // "gibbVBerish"
+            // "gibbBVerish"
+            //  012345678
         }
         else if(oldAction === "insert" && newDataAction === "delete"){
             newData.ops[0].retain++;
-            return [newData];
+            return [[newData], newData];
         }
         else if(oldAction === "delete" && newDataAction === "insert"){
-            return [newData];
+            return [[newData], newData];
         }
         else if(oldAction === "delete" && newDataAction === "delete"){
             const newDelete = newData.ops[1].delete;
             const oldDelete = old.ops[1].delete;
             if(newDelete > oldDelete){
-                newData.ops[1].delete = oldDelete - newDelete;
-                return [newData];
+                newData.ops[1].delete = newDelete - oldDelete;
+                return [[newData],newData];
             }else{
-                return [];
+                return [[],old];
             }
         }
     }
-
-    handleTransforms(old, newData){
+    
+    transformOperations(old, newData){
         if(old === "BEG"){
-            return [newData];
+            return [[newData], newData];
         }
-        console.log(old, newData);
+        // console.log(old, newData);
         const oldRetain = old.ops[0].retain;
         const newRetain = newData.ops[0].retain;
 
@@ -99,6 +173,19 @@ class OperationalTransform{
         }else{
             return this.transformEqual(old, newData);
         }
+    }
+
+    handleTransforms(old, newData){
+        if(old === "BEG"){
+            return [[newData], newData];
+        }
+        for(const o of old){
+            const trans = this.transformOperations(o, newData);
+            if(trans[0] ==[]){
+                return [];
+            }
+        }
+        return this.transformOperations(old[old.length-1], newData);
     }
 
     ensureStructure(data){
@@ -114,7 +201,6 @@ class OperationalTransform{
             return {ops:[{retain:0},{insert:''}]};
         }
     }
-
 }
 /*
 old = retain 3 insert 'm'

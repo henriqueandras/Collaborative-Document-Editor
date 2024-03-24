@@ -29,10 +29,11 @@ export const Document = () => {
 
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
-    const newReceivedTransforms = ot.handleTransforms(prevTransform, delta);
+    const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
     newReceivedTransforms.forEach((newReceivedTransform)=>{
       quill.updateContents(newReceivedTransform.ops);
     });
+    setPrevTransform(prev);
   };
 
   const handlerSetContent = (delta) => {

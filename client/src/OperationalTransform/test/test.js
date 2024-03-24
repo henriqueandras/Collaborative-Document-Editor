@@ -215,51 +215,57 @@ function test(){
     const third2 = {ops:[{"retain":5},{"insert":'d'}]};
     const third3 = {ops:[{"retain":5},{"insert":'d'}]};
 
+    /*
+      c1= "ba" {ops:[{"retain":0},{"insert":'a'}]}
+    
+      c2= "ab" {ops:[{"retain":0},{"insert":'b'}]}
+    */
+
+
     c1.apply(first);
-    let c1Prev = second;
-    const [app,prev1] = c1.handleTransforms([first], third);
-    console.log("APP", JSON.stringify(app));
+    const [app,prev1] = c1.handleTransforms([first], second);
+    // console.log("APP", JSON.stringify(app));
     app.forEach((a)=>{
         c1.apply(a);
     });
-    console.log(c1.str);
-    // console.log("F", third,first);
-    const [app1] = c1.handleTransforms([first,prev1], second);
+    // console.log(c1.str);
+    // // console.log("F", third,first);
+    const [app1] = c1.handleTransforms([first,prev1], third);
     app1.forEach((a)=>{
-        console.log('op',a)
+        // console.log('op',a)
         c1.apply(a);
-        console.log(c1.str);
+        // console.log(c1.str);
     });
-    // const app = c1.handleTransforms(first, second);
-    // app.forEach((a)=>{
-    //     console.log(a);
-    //     c1.apply(a);
-    // });
+    // // const app = c1.handleTransforms(first, second);
+    // // app.forEach((a)=>{
+    // //     console.log(a);
+    // //     c1.apply(a);
+    // // });
     console.log("FINAL C1",c1.str);
     
     
     
-    c2.apply(second2);
+    c2.apply(third2);
     let c2Prev = third2;
-    const [app2,prev2] = c2.handleTransforms([second2], first2);
-    console.log("APP2", JSON.stringify(app2));
+    const [app2,prev2] = c2.handleTransforms([third2], second2);
+    // console.log("APP2", JSON.stringify(app2));
     app2.forEach((a)=>{
         // console.log(a)
         c2.apply(a);
         c2Prev = a;
     });
-    console.log(c2.str);
+    // console.log(c2.str);
     // const app3 = c2.handleTransforms(third2, first2);
     // app3.forEach((a)=>{
     //     c2.apply(a);
     // });
     // console.log("S",second2, first2)
-    const [app3] = c2.handleTransforms([second, prev2], third2);
-    console.log("App3", JSON.stringify(app3))
+    const [app3] = c2.handleTransforms([second2, prev2], first2);
+    // console.log("App3", JSON.stringify(app3))
     app3.forEach((a)=>{
-        console.log('op', a)
+        // console.log('op', a)
         c2.apply(a);
-        console.log(c2.str)
+        // console.log(c2.str)
     });
     console.log("FINAL C2",c2.str);
     
@@ -277,8 +283,8 @@ function test(){
     console.log("FINAL C3", c3.str);
 }
 
-
 test();
+
 /*
 old = retain 3 insert 'm'
 current = retain:4 delete 1
