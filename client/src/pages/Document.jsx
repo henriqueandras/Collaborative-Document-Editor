@@ -58,13 +58,11 @@ export const Document = () => {
         console.log(quill.getContents());
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
-        setTimeout(() => {
-          socket.socket.emit("updates", {
-            documentId: documentId,
-            delta: delta,
-            content: quillContent,
-          });
-        }, 2000);
+        socket.socket.emit("updates", {
+          documentId: documentId,
+          delta: delta,
+          content: quillContent,
+        });
       }
     });
   }, [socket, quill]);

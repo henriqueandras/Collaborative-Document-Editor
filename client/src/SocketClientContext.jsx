@@ -7,12 +7,12 @@ export const SocketClient = createContext(null);
 
 export default function SocketClientContext({ children }) {
   const [clientSocket, setClientSocket] = useState({
-    address:"http://localhost:1892",
-    socket: io("ws://localhost:1892", {
+    address: "ws://0.tcp.us-cal-1.ngrok.io:18143",
+    socket: io("ws://0.tcp.us-cal-1.ngrok.io:18143", {
       extraHeaders: new Headers({
         "ngrok-skip-browser-warning": "69420",
       }),
-    })
+    }),
   });
   useEffect(() => {
     clientSocket.socket.on("connect_error", () => {
@@ -23,8 +23,8 @@ export default function SocketClientContext({ children }) {
         }),
       });
       setClientSocket({
-        address:"http://localhost:1893",
-        socket: socket2
+        address: "http://localhost:1893",
+        socket: socket2,
       });
     });
     clientSocket.socket.on("connect", () => {
