@@ -7,6 +7,13 @@ import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
 import OperationalTransform from "../OperationalTransform/OperationalTransform";
 
+function syncTimeout(time){
+  const beg = Date.now();
+  while(Date.now()-beg<time){
+    //do nothing
+  }
+}
+
 export const Document = () => {
   const ot = new OperationalTransform();
   // const defaultTransform = {ops:[{retain:0},{insert:''}]};
@@ -66,6 +73,7 @@ export const Document = () => {
         console.log(delta);
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
+        // syncTimeout(2000);
         socket.socket.emit("updates", {
           documentId: documentId,
           delta: delta,
