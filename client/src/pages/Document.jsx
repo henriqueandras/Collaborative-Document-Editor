@@ -31,9 +31,15 @@ export const Document = () => {
     console.log("recieved:", delta);
     const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
     newReceivedTransforms.forEach((newReceivedTransform)=>{
+      console.log("Applying:", newReceivedTransform.ops);
+      if("retain" in newReceivedTransform.ops[0]){
+        const length = quill.getContents().ops[0].insert.length;
+        newReceivedTransform.ops[0].retain = Math.min(newReceivedTransform.ops[0].retain, length-1);
+      }
       quill.updateContents(newReceivedTransform.ops);
     });
-    setPrevTransform(prev);
+    const arr = prevTransform === "BEG" ? [] : prevTransform;
+    setPrevTransform([...arr, prev]);
   };
 
   const handlerSetContent = (delta) => {
@@ -75,11 +81,13 @@ export const Document = () => {
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
         // syncTimeout(2000);
-        socket.socket.emit("updates", {
-          documentId: documentId,
-          delta: delta,
-          content: quillContent
-        });
+        setTimeout(()=>{
+          socket.socket.emit("updates", {
+            documentId: documentId,
+            delta: delta,
+            content: quillContent
+          });
+        },2000);
         setPrevTransform(ot.ensureStructure(delta));
       }
     });

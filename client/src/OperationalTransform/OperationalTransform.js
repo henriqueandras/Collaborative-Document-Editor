@@ -179,10 +179,13 @@ class OperationalTransform{
         if(old === "BEG"){
             return [[newData], newData];
         }
+        const ops = [];
         for(const o of old){
             const trans = this.transformOperations(o, newData);
-            if(trans[0] ==[]){
+            if(trans[0] == []){
                 return [];
+            }else{
+                ops.push(trans[0]);
             }
         }
         return this.transformOperations(old[old.length-1], newData);
