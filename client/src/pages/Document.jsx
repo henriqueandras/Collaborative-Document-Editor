@@ -33,7 +33,7 @@ export const Document = () => {
     newReceivedTransforms.forEach((newReceivedTransform)=>{
       console.log("Applying:", newReceivedTransform.ops);
       if("retain" in newReceivedTransform.ops[0]){
-        const length = quill.getContents().ops[0].insert.length;
+        const length = quill.getContents()?.ops[0]?.insert?.length || 1;
         newReceivedTransform.ops[0].retain = Math.min(newReceivedTransform.ops[0].retain, length-1);
       }
       quill.updateContents(newReceivedTransform.ops);
