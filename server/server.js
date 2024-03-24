@@ -27,7 +27,7 @@ connect();
 const defaultValue = { updates: [], text: [] };
 
 // const currentEndpoint = `http://localhost:${PORT}`;
-const currentEndpoint = 'ws://10.15.192.137:3002';
+const currentEndpoint = 'http://localhost:3001';
 const endpointPORT = currentEndpoint.split(":")[2];
 
 let otherServerSockets = [];
@@ -44,18 +44,6 @@ const ioServer = require("socket.io")(http, {
     origin: "*",
     methods: ["GET", "POST"],
   },
-});
-
-socket.on('lock', ({ documentId, userId }) => {
-  lockDocument(documentId, userId);
-});
-
-socket.on('unlock', ({ documentId }) => {
-  unlockDocument(documentId);
-});
-
-socket.on('checkLock', ({ documentId, userId }, callback) => {
-  callback({ locked: isLocked(documentId, userId) });
 });
 
 listOfEndpoints.forEach((serverEndpoint) => {
@@ -89,6 +77,18 @@ function createSocketListeners(io) {
       serverConnections.push(socket);
     }
     console.log("A client connected!");
+
+    socket.on('lock', ({ documentId, userId }) => {
+      lockDocument(documentId, userId);
+    });
+    
+    socket.on('unlock', ({ documentId }) => {
+      unlockDocument(documentId);
+    });
+    
+    socket.on('checkLock', ({ documentId, userId }, callback) => {
+      callback({ locked: isLocked(documentId, userId) });
+    });
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
