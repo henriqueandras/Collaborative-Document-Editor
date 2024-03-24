@@ -23,20 +23,20 @@ if (process.argv.length >= 3) {
   // RANK = Number.parseInt(process.argv[3]);
 }
 
-if (process.argv.length >= 4){
-  if (process.argv[3] == "local"){
-    Document = require('./Database/LocalDb/localDb');
+if (process.argv.length >= 4) {
+  if (process.argv[3] == "local") {
+    Document = require("./Database/LocalDb/localDb");
     useLocalDb = true;
-  }else if(Number.isInteger(Number(process.argv[3]))){
+  } else if (Number.isInteger(Number(process.argv[3]))) {
     MONGO_PORT = Number(process.argv[3]);
   }
 }
 
 const rooms = new Rooms();
-if(!useLocalDb){
+if (!useLocalDb) {
   connect(MONGO_PORT);
-}else{
-  console.log("Running local in-mem db")
+} else {
+  console.log("Running local in-mem db");
 }
 const defaultValue = { updates: [], text: [] };
 
@@ -75,18 +75,22 @@ listOfEndpoints.forEach((serverEndpoint) => {
   }
 });
 
-function broadcastToAll(event, message){
-  for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
+function broadcastToAll(event, message) {
+  for (const {
+    serverEndpoint,
+    sockId,
+    socket: actualSocket,
+  } of otherServerSockets) {
     actualSocket.emit(event, message);
   }
-  for (const sock of serverConnections){
+  for (const sock of serverConnections) {
     sock.emit(event, message);
   }
 }
 
 function createSocketListeners(io) {
   io.on("connection", (socket) => {
-    if(io === ioServer){
+    if (io === ioServer) {
       serverConnections.push(socket);
     }
     console.log("A client connected!");
@@ -100,39 +104,43 @@ function createSocketListeners(io) {
       console.log("leader received");
       leader = message;
       running = false;
-      console.log(`${PORT}:`,leader);
-      serverConnections.forEach((s)=>{
-        ioServer.to(s.id).emit("leader-elected",message);
+      console.log(`${PORT}:`, leader);
+      serverConnections.forEach((s) => {
+        ioServer.to(s.id).emit("leader-elected", message);
       });
     });
 
     socket.on("initiate-election", (message) => {
       leader = null;
-      console.log('initiate-election called')
-      if(message.id<endpointPORT){
+      console.log("initiate-election called");
+      if (message.id < endpointPORT) {
         socket.emit("bully-message");
       }
       running = true;
       let isTop = true;
-      for (const { serverEndpoint, sockId, socket:actualSocket } of otherServerSockets) {
+      for (const {
+        serverEndpoint,
+        sockId,
+        socket: actualSocket,
+      } of otherServerSockets) {
         const ports = serverEndpoint.split(":");
         if (ports[2] > endpointPORT) {
-          console.log("is not top")
+          console.log("is not top");
           isTop = false;
           actualSocket.emit("initiate-election", {
-            id:endpointPORT
+            id: endpointPORT,
           });
           setTimeout(() => {
             if (!bullyReceived && !leader) {
               leader = {
-                leader:socket.id,
-                endpoint:currentEndpoint
+                leader: socket.id,
+                endpoint: currentEndpoint,
               };
               // socket.broadcast.emit("leader-elected", {
               //   leader: io.id,
               //   endpoint: `http://localhost:${PORT}`,
               // });
-              broadcastToAll("leader-elected",{
+              broadcastToAll("leader-elected", {
                 leader: socket.id,
                 endpoint: currentEndpoint,
               });
@@ -148,7 +156,7 @@ function createSocketListeners(io) {
                   running = false;
                 } else {
                   actualSocket.emit("initiate-election", {
-                    id:endpointPORT
+                    id: endpointPORT,
                   });
                 }
               }, 100);
@@ -157,11 +165,11 @@ function createSocketListeners(io) {
         }
       }
       if (isTop) {
-        console.log("is top")
-        broadcastToAll("leader-elected",{
+        console.log("is top");
+        broadcastToAll("leader-elected", {
           leader: socket.id,
           endpoint: currentEndpoint,
-        })
+        });
         // socket.broadcast.emit("leader-elected", {
         //   leader: socket.id,
         //   endpoint: `http://localhost:${PORT}`,
@@ -178,7 +186,7 @@ function createSocketListeners(io) {
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
       await Document.create({ _id: documentId, data: defaultValue });
-    }
+    };
 
     socket.on("create-document", handleCreateDocument);
 
@@ -190,13 +198,13 @@ function createSocketListeners(io) {
       console.log(documentId);
       const prev = await Document.findById(documentId);
 
-      if(!prev){
-        try{
-          await handleCreateDocument({ 
-            documentId:documentId, 
-            sId:sId 
+      if (!prev) {
+        try {
+          await handleCreateDocument({
+            documentId: documentId,
+            sId: sId,
           });
-        }catch(e){
+        } catch (e) {
           console.log(e);
         }
       }
@@ -204,8 +212,8 @@ function createSocketListeners(io) {
       console.log("delta", JSON.stringify(delta));
       let up = [];
       let txt = [];
-      if(prev){
-        if(prev.data){
+      if (prev) {
+        if (prev.data) {
           up = [...prev.data.updates];
           txt = [...prev.data.text];
         }
@@ -213,11 +221,12 @@ function createSocketListeners(io) {
       const newData = {
         updates: [...up, ...delta.ops],
         text: [...txt, getInsertedDataFromQuill(delta)],
-        content: content
+        content: content,
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       socket.emit("new-updates", {
         delta: delta,
+        content: content,
         userList: userList,
         senderId: sId,
       });
@@ -231,18 +240,18 @@ function createSocketListeners(io) {
       console.log("JOIN DOCUMENT", message);
       const document = await Document.findById(documentId);
       console.log("document", document);
-      if(document){
+      if (document) {
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,
         });
-      }else{
-        try{
-          await handleCreateDocument({ 
-            documentId:documentId, 
-            sId:sId 
+      } else {
+        try {
+          await handleCreateDocument({
+            documentId: documentId,
+            sId: sId,
           });
-        }catch(e){
+        } catch (e) {
           console.log(`ERROR:${e}`);
         }
         const document = await Document.findById(documentId);

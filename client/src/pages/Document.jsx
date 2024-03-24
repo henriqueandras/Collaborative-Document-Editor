@@ -10,15 +10,15 @@ export const Document = () => {
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
-  const [ err, setErr ] = useState({
-    error:"",
-    resolution:""
+  const [err, setErr] = useState({
+    error: "",
+    resolution: "",
   });
   const socket = useContext(SocketClient);
 
-  const handlerUpdateContent = (delta) => {
-    console.log("recieved:", delta);
-    quill.updateContents(delta.ops);
+  const handlerUpdateContent = (content) => {
+    console.log("recieved:", content);
+    quill.setContents(content);
   };
 
   const handlerSetContent = (delta) => {
@@ -27,12 +27,12 @@ export const Document = () => {
   };
 
   const handleErrorMessage = (message) => {
-    const { err:errorMessage, resolution } = message;
+    const { err: errorMessage, resolution } = message;
     setErr({
-      error:errorMessage,
-      resolution:resolution
+      error: errorMessage,
+      resolution: resolution,
     });
-  }
+  };
 
   useEffect(() => {
     console.log("something changes");
@@ -45,10 +45,9 @@ export const Document = () => {
   }, [socket, quill]);
 
   useEffect(() => {
-    
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: uuid(),
     });
   }, [socket]);
 
@@ -59,11 +58,13 @@ export const Document = () => {
         console.log(quill.getContents());
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
-        socket.socket.emit("updates", {
-          documentId: documentId,
-          delta: delta,
-          content: quillContent
-        });
+        setTimeout(() => {
+          socket.socket.emit("updates", {
+            documentId: documentId,
+            delta: delta,
+            content: quillContent,
+          });
+        }, 2000);
       }
     });
   }, [socket, quill]);
@@ -83,9 +84,12 @@ export const Document = () => {
   }, []);
 
   if (!documentId) return <h1>No such document exists</h1>;
-  if (err.error) return <div>
-    <h1>Error: {err.error}</h1>
-    <h1>Resolution: {err.resolution}</h1>
-  </div>
+  if (err.error)
+    return (
+      <div>
+        <h1>Error: {err.error}</h1>
+        <h1>Resolution: {err.resolution}</h1>
+      </div>
+    );
   return <div className="document" ref={wrapperRef}></div>;
 };
