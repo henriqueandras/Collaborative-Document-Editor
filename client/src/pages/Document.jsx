@@ -1,4 +1,5 @@
 import Quill from "quill";
+import Delta from "quill-delta"
 import "quill/dist/quill.snow.css";
 import "./styles.css";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -73,6 +74,10 @@ export const Document = () => {
           delta: delta,
           content: quillContent
         });
+        // 
+        const d = new Delta(delta);
+        console.log("delta inverse", d.invert());
+        quill.updateContents(d.invert(), "silent");
       }
     });
   }, [socket, quill]);

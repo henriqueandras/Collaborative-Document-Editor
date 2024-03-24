@@ -68,9 +68,9 @@ function setupProxyServerConnection(server_socket){
       userList.map((sock) => {
         console.log(delta, sock);
         // console.log(io.sockets);
-        if (sock !== senderId) {
+        // if (sock !== senderId) {
           ioserver.to(sock).emit("new-updates", delta);
-        }
+        // }
       });
     });
   
