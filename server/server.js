@@ -5,6 +5,7 @@ const { connect } = require("./Database/db");
 let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
+const Server = require("./server/server");
 
 const app = express();
 const http = require("http").Server(app);
@@ -55,6 +56,7 @@ const listOfEndpoints = [
 let running = false;
 let bullyReceived = false;
 let leader = null;
+var server = new Server();
 
 const ioServer = require("socket.io")(http, {
   cors: {
@@ -184,7 +186,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId, content } = message;
+      const { documentId, delta, sId, content, version } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -200,8 +202,11 @@ function createSocketListeners(io) {
           console.log(e);
         }
       }
-      console.log("ops", JSON.stringify(delta.ops[1]));
-      console.log("delta", JSON.stringify(delta));
+      console.log(JSON.stringify(server.receiveDelta));
+      const newDelta = server.receiveDelta(version, delta);
+
+      console.log("ops", JSON.stringify(newDelta.ops[1]));
+      console.log("delta", JSON.stringify(newDelta));
       let up = [];
       let txt = [];
       if(prev){
@@ -211,13 +216,13 @@ function createSocketListeners(io) {
         }
       }
       const newData = {
-        updates: [...up, ...delta.ops],
-        text: [...txt, getInsertedDataFromQuill(delta)],
+        updates: [...up, ...newDelta.ops],
+        text: [...txt, getInsertedDataFromQuill(newDelta)],
         content: content
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       socket.emit("new-updates", {
-        delta: delta,
+        delta: newDelta,
         userList: userList,
         senderId: sId,
       });

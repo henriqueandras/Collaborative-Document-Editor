@@ -121,12 +121,13 @@ function setupClientProxyConnection(ioServer, server_socket){
     });
     socket.on("updates", async (message) => {
       console.log("updates called...", JSON.stringify(message));
-      const { documentId, delta, content} = message;
+      const { documentId, delta, content, version} = message;
       server_socket.emit("updates", {
         documentId: documentId,
         delta: delta,
         sId: socket.id,
-        content: content
+        content: content,
+        version: version
       });
     });
     socket.on("disconnect", async () => {
