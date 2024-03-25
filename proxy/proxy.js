@@ -52,21 +52,29 @@ function setupProxyServerConnection(server_socket){
     });
   
     server_socket.on("new-updates", async (message) => {
-      const { delta, userList, senderId } = message;
+      const { delta, userList, senderId, userId, version } = message;
       userList.map((sock) => {
         console.log(delta, sock);
         // console.log(io.sockets);
         if (sock !== senderId) {
-          ioserver.to(sock).emit("new-updates", delta);
+          ioserver.to(sock).emit("new-updates", {
+            operation: delta,
+            version: version,
+            userId: userId
+          });
         }
       });
     });
   
     server_socket.on("join-document-data", async (message) => {
-      const { text, sId } = message;
+      const { text, sId, userId, version } = message;
       console.log("join message: ", message);
       console.log("join sId: ", sId);
-      ioserver.to(sId).emit("join-document-data", text);
+      ioserver.to(sId).emit("join-document-data", {
+        delta:text,
+        userId:userId,
+        version:version
+      });
     });
 
     server_socket.on("error_message",(message)=>{
@@ -121,12 +129,14 @@ function setupClientProxyConnection(ioServer, server_socket){
     });
     socket.on("updates", async (message) => {
       console.log("updates called...", JSON.stringify(message));
-      const { documentId, delta, content} = message;
+      const { documentId, delta, content, version,userId} = message;
       server_socket.emit("updates", {
         documentId: documentId,
         delta: delta,
         sId: socket.id,
-        content: content
+        content: content,
+        version: version,
+        userId: userId
       });
     });
     socket.on("disconnect", async () => {

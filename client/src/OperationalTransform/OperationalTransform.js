@@ -162,7 +162,7 @@ class OperationalTransform{
         if(old === "BEG"){
             return [[newData], newData];
         }
-        // console.log(old, newData);
+        console.log(old, newData);
         const oldRetain = old.ops[0].retain;
         const newRetain = newData.ops[0].retain;
 
@@ -179,16 +179,16 @@ class OperationalTransform{
         if(old === "BEG"){
             return [[newData], newData];
         }
-        const ops = [];
-        for(const o of old){
-            const trans = this.transformOperations(o, newData);
-            if(trans[0] == []){
-                return [];
-            }else{
-                ops.push(trans[0]);
-            }
-        }
-        return this.transformOperations(old[old.length-1], newData);
+        // const ops = [];
+        // for(const o of old){
+        //     const trans = this.transformOperations(o, newData);
+        //     if(trans[0] == []){
+        //         return [];
+        //     }else{
+        //         ops.push(trans[0]);
+        //     }
+        // }
+        return this.transformOperations(old, newData);
     }
 
     ensureStructure(data){
@@ -204,6 +204,43 @@ class OperationalTransform{
             return {ops:[{retain:0},{insert:''}]};
         }
     }
+}
+
+
+
+export function comparison(listOfOldOps, currentOp, ot, print){
+    let newOp = currentOp.operation;
+    if(listOfOldOps.length===0){
+        return {
+            operation:[newOp],
+            version:currentOp.version
+        };
+    }
+    for(let i=0;i<listOfOldOps.length;i++){
+        const old = listOfOldOps[i];
+        if(currentOp.version<old.version || (currentOp.version === old.version && old.userId !== currentOp.userId )){
+            print(`Old: ${JSON.stringify(old)}, New: ${JSON.stringify(newOp)}`);
+            if(!("ops" in newOp)){
+                if(newOp.length===1){
+                    const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp[0]);
+                    newOp = newAlteredOp;
+                }else{
+                    //TODO for deletion multiple ops created figure out how to handle
+                    const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp[0]);
+                    
+                    const [newAlteredOp2,prev2] = ot.handleTransforms(newAlteredOp[0], newOp[1]);
+                    newOp = newAlteredOp2;
+                }
+            }else{
+                const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp);
+                newOp = newAlteredOp;
+            }
+        }
+    }
+    return {
+        operation:newOp,
+        version:listOfOldOps.length>0 ? listOfOldOps[listOfOldOps.length-1].version+1 :currentOp.version+1  
+    };
 }
 /*
 old = retain 3 insert 'm'

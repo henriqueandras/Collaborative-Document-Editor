@@ -1,0 +1,6 @@
+
+- inserting not working versioning issue or retain not being moved
+- ensure structure
+- insert insert same position break ties
+- deletion not working
+- sequence of ops added (prev could affect new - test out)

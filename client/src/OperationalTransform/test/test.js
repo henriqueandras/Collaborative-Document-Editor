@@ -162,7 +162,7 @@ class OperationalTransform{
         if(old === "BEG"){
             return [[newData], newData];
         }
-        // console.log(old, newData);
+        console.log(old, newData);
         const oldRetain = old.ops[0].retain;
         const newRetain = newData.ops[0].retain;
 
@@ -176,13 +176,19 @@ class OperationalTransform{
     }
 
     handleTransforms(old, newData){
-        for(const o of old){
-            const trans = this.transformOperations(o, newData);
-            if(trans[0] ==[]){
-                return [];
-            }
+        if(old === "BEG"){
+            return [[newData], newData];
         }
-        return this.transformOperations(old[old.length-1], newData);
+        // const ops = [];
+        // for(const o of old){
+        //     const trans = this.transformOperations(o, newData);
+        //     if(trans[0] == []){
+        //         return [];
+        //     }else{
+        //         ops.push(trans[0]);
+        //     }
+        // }
+        return this.transformOperations(old, newData);
     }
 
     ensureStructure(data){
@@ -200,21 +206,139 @@ class OperationalTransform{
     }
 }
 
+
+
+function comparison(listOfOldOps, currentOp, ot){
+    let newOp = currentOp.operation;
+    for(let i=0;i<listOfOldOps.length;i++){
+        const old = listOfOldOps[i];
+        if(currentOp.version<=old.version){
+            if(!("ops" in newOp)){
+                const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp[0]);
+                newOp = newAlteredOp;
+                
+            }else{
+                const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp);
+                newOp = newAlteredOp;
+            }
+        }
+    }
+    return {
+        operation:newOp,
+        version:listOfOldOps[listOfOldOps.length-1].version+1
+    };
+}
+
 function test(){
-    
     const c1 = new OperationalTransform("gibberish");
     const c2 = new OperationalTransform("gibberish");
     const c3 = new OperationalTransform("gibberish");
-    const first = {ops:[{"retain":2},{"delete":4}]};
-    const first2 = {ops:[{"retain":2},{"delete":4}]};
-    const first3 = {ops:[{"retain":2},{"delete":4}]};
-    const second = {ops:[{"retain":4},{"delete":2}]};
-    const second2 = {ops:[{"retain":4},{"delete":2}]};
-    const second3 = {ops:[{"retain":4},{"delete":2}]};
-    const third = {ops:[{"retain":5},{"insert":'d'}]};
-    const third2 = {ops:[{"retain":5},{"insert":'d'}]};
-    const third3 = {ops:[{"retain":5},{"insert":'d'}]};
+    
+    const first = {
+        operation:{ops:[{"retain":2},{"insert":'n'}]},
+        version:0
+        };
+    const first2 = {
+        operation:{ops:[{"retain":2},{"insert":'n'}]},
+        version:0
+        };
+    const first3 = {
+        operation:{ops:[{"retain":2},{"insert":'n'}]},
+        version:0
+    };
 
+    const second = {
+        operation:{ops:[{"retain":4},{"delete":3}]},
+        version:0
+    };
+    const second2 = {
+        operation:{ops:[{"retain":4},{"delete":3}]},
+        version:0
+    };
+    const second3 = {
+        operation:{ops:[{"retain":4},{"delete":3}]},
+        version:0
+    };
+
+    const third = {
+        operation:{ops:[{"retain":5},{"insert":'d'}]},
+        version:0
+        };
+    const third2 = {
+        operation:{ops:[{"retain":5},{"insert":'d'}]},
+        version:0
+        };
+    const third3 = {
+        operation:{ops:[{"retain":5},{"insert":'d'}]},
+        version:0
+        };
+
+    c1.apply(first.operation);
+    const c1List = [first];
+    let c1OpToPerform = comparison(c1List, second,c1);
+    c1OpToPerform.operation.forEach((op)=>{
+        c1.apply(op);
+        c1List.push({
+            operation:op,
+            version:c1OpToPerform.version
+        });
+    });
+    console.log("c1List", c1List)
+    c1OpToPerform = comparison(c1List, third, c1);
+    c1OpToPerform.operation.forEach((op)=>{
+        c1.apply(op);
+        c1List.push({
+            operation:op,
+            version:c1OpToPerform.version
+        });
+    });
+
+    
+    
+    c2.apply(second2.operation);
+    const c2List = [second2];
+    let c2OpToPerform = comparison(c2List, first2,c2);
+    c2OpToPerform.operation.forEach((op)=>{
+        c2.apply(op);
+        c2List.push({
+            operation:op,
+            version:c2OpToPerform.version
+        });
+    });
+    c2OpToPerform = comparison(c2List, third2,c2);
+    c2OpToPerform.operation.forEach((op)=>{
+        c2.apply(op);
+        c2List.push({
+            operation:op,
+            version:c2OpToPerform.version
+        });
+    });
+
+
+    c3.apply(third3.operation);
+    const c3List = [third3];
+    let c3OpToPerform = comparison(c3List, first3,c3);
+    c3OpToPerform.operation.forEach((op)=>{
+        c3.apply(op);
+        c3List.push({
+            operation:op,
+            version:c3OpToPerform.version
+        });
+    });
+
+    c3OpToPerform = comparison(c3List, second3,c3);
+    c3OpToPerform.operation.forEach((op)=>{
+        c3.apply(op);
+        c3List.push({
+            operation:op,
+            version:c3OpToPerform.version
+        });
+    });
+
+    console.log(c1.str);
+    console.log(c2.str);
+    console.log(c3.str);
+    
     /*
       c1= "ba" {ops:[{"retain":0},{"insert":'a'}]}
     
@@ -222,68 +346,69 @@ function test(){
     */
 
 
-    c1.apply(first);
-    const [app,prev1] = c1.handleTransforms([first], second);
-    // console.log("APP", JSON.stringify(app));
-    app.forEach((a)=>{
-        c1.apply(a);
-    });
-    // console.log(c1.str);
-    // // console.log("F", third,first);
-    const [app1] = c1.handleTransforms([first,prev1], third);
-    app1.forEach((a)=>{
-        // console.log('op',a)
-        c1.apply(a);
-        // console.log(c1.str);
-    });
-    // // const app = c1.handleTransforms(first, second);
-    // // app.forEach((a)=>{
-    // //     console.log(a);
-    // //     c1.apply(a);
-    // // });
-    console.log("FINAL C1",c1.str);
-    
-    
-    
-    c2.apply(third2);
-    let c2Prev = third2;
-    const [app2,prev2] = c2.handleTransforms([third2], second2);
-    // console.log("APP2", JSON.stringify(app2));
-    app2.forEach((a)=>{
-        // console.log(a)
-        c2.apply(a);
-        c2Prev = a;
-    });
-    // console.log(c2.str);
-    // const app3 = c2.handleTransforms(third2, first2);
-    // app3.forEach((a)=>{
-    //     c2.apply(a);
+    // c1.apply(first);
+    // const [app,prev1] = c1.handleTransforms([first], second);
+    // // console.log("APP", JSON.stringify(app));
+    // app.forEach((a)=>{
+    //     c1.apply(a);
     // });
-    // console.log("S",second2, first2)
-    const [app3] = c2.handleTransforms([second2, prev2], first2);
-    // console.log("App3", JSON.stringify(app3))
-    app3.forEach((a)=>{
-        // console.log('op', a)
-        c2.apply(a);
-        // console.log(c2.str)
-    });
-    console.log("FINAL C2",c2.str);
+    // // console.log(c1.str);
+    // // // console.log("F", third,first);
+    // const [app1] = c1.handleTransforms([first,prev1], third);
+    // app1.forEach((a)=>{
+    //     // console.log('op',a)
+    //     c1.apply(a);
+    //     // console.log(c1.str);
+    // });
+    // // // const app = c1.handleTransforms(first, second);
+    // // // app.forEach((a)=>{
+    // // //     console.log(a);
+    // // //     c1.apply(a);
+    // // // });
+    // console.log("FINAL C1",c1.str);
     
-    c3.apply(third3);
-    const [app4, prev3] = c3.handleTransforms([third3], second3);
-        console.log("APP4", JSON.stringify(app4));
+    
+    
+    // c2.apply(third2);
+    // let c2Prev = third2;
+    // const [app2,prev2] = c2.handleTransforms([third2], second2);
+    // // console.log("APP2", JSON.stringify(app2));
+    // app2.forEach((a)=>{
+    //     // console.log(a)
+    //     c2.apply(a);
+    //     c2Prev = a;
+    // });
+    // // console.log(c2.str);
+    // // const app3 = c2.handleTransforms(third2, first2);
+    // // app3.forEach((a)=>{
+    // //     c2.apply(a);
+    // // });
+    // // console.log("S",second2, first2)
+    // const [app3] = c2.handleTransforms([second2, prev2], first2);
+    // // console.log("App3", JSON.stringify(app3))
+    // app3.forEach((a)=>{
+    //     // console.log('op', a)
+    //     c2.apply(a);
+    //     // console.log(c2.str)
+    // });
+    // console.log("FINAL C2",c2.str);
+    
+    // c3.apply(third3);
+    // const [app4, prev3] = c3.handleTransforms([third3], second3);
+    //     console.log("APP4", JSON.stringify(app4));
 
-    app4.forEach((a)=>{
-        c3.apply(a);
-    });
-    const [app5] = c3.handleTransforms([third3, prev3], first3);
-    app5.forEach((a)=>{
-        c3.apply(a);
-    });
-    console.log("FINAL C3", c3.str);
+    // app4.forEach((a)=>{
+    //     c3.apply(a);
+    // });
+    // const [app5] = c3.handleTransforms([third3, prev3], first3);
+    // app5.forEach((a)=>{
+    //     c3.apply(a);
+    // });
+    // console.log("FINAL C3", c3.str);
 }
 
 test();
+
 
 /*
 old = retain 3 insert 'm'
@@ -307,18 +432,11 @@ retain 5 insert 'd
 -> abcdedd 1) abc__dd 2) abcdeDdd => abcDdd
 Therefore for delete insert, subtract the delete from the retain of old to newData
 Problem if oldRetain + Olddelete >= newRetain
-gib__Drish
-if oldRetain + oldDelete <= newRetain:
- newRetain = newRetain - oldDelete
-else if oldRetain + oldDelete > newRetain:
-    newRetain = oldRetain
-    
+
 retain 3 insert 'm'
 retain 5 delete 1
 -> abcdedd 1) abcMdedd 2) abcde_d => abcMded
 Therefore for insert delete, add 1 to retain for newData
-
-
 
 retain 3 delete 1
 retain 5 delete 1
@@ -381,50 +499,5 @@ Therefore for delete delete, return newData as is
 if newDelete < oldDelete : do nothing
 if newDelete > oldDelete: newDelete = oldDelete - newDelete (only delete remaining)
 if newDelete == oldDelete : do nothing since already did
-
-abcdefghi
-retain 5 insert 'd'
-retain 2 delete 4
-retain 1 delete 2
-ab__efghi
-abeDfghi
-abcdefghi
-giish
-
-giDish
-const third = {ops:[{"retain":5},{"insert":'d'}]};
-
-
-
-OLD const first = {ops:[{"retain":2},{"delete":4}]};
-NEW const second = {ops:[{"retain":4},{"delete":2}]};
-
-if newRetain> oldRetain && newDelete + newRetain <= oldRetain + oldDelete: then do nothing
-else if newRetain> oldRetain && oldRetain + oldDelete <= newRetain:
-    newRetain = newRetain - oldDelete
-else if newRetain> oldRetain && oldRetain + oldDelete > newRetain && newRetain + newDelete > oldRetain + oldDelete: 
-        newDelete = (newRetain + newDelete) - (oldRetain + oldDelete)
-        newRetain = oldRetain
-
-giish
-gibbish
-giish
-
-
-
-OLD const second = {ops:[{"retain":4},{"delete":2}]};
-NEW const first = {ops:[{"retain":2},{"delete":4}]};
-
-if newRetain<oldRetain && newRetain + newDelete <= oldRetain:
-    return [newData]
-else if newRetain<oldRetain && newRetain + newDelete > oldRetain && newRetain + newDelete < oldRetain + oldDelete:
-    newDelete = oldRetain - newRetain
-    return [newData]
-else if newRetain<oldRetain && newRetain + newDelete > oldRetain + oldDelete:
-    newDelete = (newRetain + newDelete) - (oldRetain + oldDelete)
-gibberish
-
-
-
 */
 

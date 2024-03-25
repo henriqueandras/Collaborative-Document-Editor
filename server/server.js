@@ -184,7 +184,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId, content } = message;
+      const { documentId, delta, sId, content, userId, version } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -220,6 +220,8 @@ function createSocketListeners(io) {
         delta: delta,
         userList: userList,
         senderId: sId,
+        userId: userId, 
+        version: version
       });
     });
 
@@ -232,9 +234,12 @@ function createSocketListeners(io) {
       const document = await Document.findById(documentId);
       console.log("document", document);
       if(document){
+        const userId = rooms.getCurrentUsers(documentId).length;
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,
+          userId: userId,
+          version: 0
         });
       }else{
         try{
@@ -246,9 +251,13 @@ function createSocketListeners(io) {
           console.log(`ERROR:${e}`);
         }
         const document = await Document.findById(documentId);
+        const userId = rooms.getCurrentUsers(documentId).length;
+
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,
+          userId: userId,
+          version:0
         });
       }
     });
