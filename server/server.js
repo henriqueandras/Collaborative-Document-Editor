@@ -5,6 +5,7 @@ const { connect } = require("./Database/db");
 let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
+const Automerge = require('automerge');
 
 const app = express();
 const http = require("http").Server(app);
@@ -177,51 +178,76 @@ function createSocketListeners(io) {
       rooms.addPermittedUsers(documentId, sId);
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
-      await Document.create({ _id: documentId, data: defaultValue });
+      // Initialize an Automerge document
+      // When initially creating the document, include the `text` property.
+      const initialDoc = Automerge.from({ text: new Automerge.Text() });
+      await Document.create({ _id: documentId, data: Automerge.save(initialDoc) });
     }
 
     socket.on("create-document", handleCreateDocument);
 
     socket.on("updates", async (message) => {
-      console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId, content } = message;
-      const userList = rooms.getCurrentUsers(documentId);
-      console.log(userList);
-      console.log(documentId);
-      const prev = await Document.findById(documentId);
+      console.log("RECEIVED UPDATES");
+      const { documentId, delta, sId } = message;
+    
+      try {
+        let documentEntry = await Document.findById(documentId);
+    
+        if (!documentEntry) {
+          console.error(`Document with ID ${documentId} not found.`);
+          return;
+        }
+    
+        let currentDoc = Automerge.load(documentEntry.data);
 
-      if(!prev){
-        try{
-          await handleCreateDocument({ 
-            documentId:documentId, 
-            sId:sId 
+        console.log("ops", JSON.stringify(delta.ops[1]));
+        console.log("delta", JSON.stringify(delta));
+    
+        currentDoc = Automerge.change(currentDoc, doc => {
+          console.log("Document: ", doc);
+          console.log('Is currentDoc.text an Automerge.Text?', currentDoc.text instanceof Automerge.Text);
+          console.log('Is doc.text an Automerge.Text?', doc.text instanceof Automerge.Text);
+          if (!(doc.text instanceof Automerge.Text)) {
+            doc.text = new Automerge.Text();
+          }
+    
+          let cursorPosition = 0; // Initialize cursor position
+    
+          delta.ops.forEach((op) => {
+            if ('insert' in op) {
+              if (typeof op.insert === 'string') {
+                // Insert string at the current cursor position
+                doc.text.insertAt(cursorPosition, ...op.insert.split(''));
+                cursorPosition += op.insert.length; // Move cursor after inserted text
+              } else {
+                console.log('Insert operation with non-string not implemented:', op.insert);
+              }
+            } else if ('delete' in op) {
+              // Delete a number of characters starting from the current cursor position
+              for (let i = 0; i < op.delete; i++) {
+                doc.text.deleteAt(cursorPosition);
+              }
+            } else if ('retain' in op) {
+              cursorPosition += op.retain; // Move cursor position by retain amount
+              if (op.attributes) {
+                console.log('Retain operation with attributes not implemented:', op.attributes);
+              }
+            }
           });
-        }catch(e){
-          console.log(e);
-        }
+        });
+    
+        const updatedData = Automerge.save(currentDoc);
+        await Document.findByIdAndUpdate(documentId, { data: updatedData });
+    
+        socket.emit("new-updates", {
+          delta: delta,
+          userList: rooms.getCurrentUsers(documentId),
+          senderId: sId,
+        });
+      } catch (error) {
+        console.error("Error handling document updates:", error);
       }
-      console.log("ops", JSON.stringify(delta.ops[1]));
-      console.log("delta", JSON.stringify(delta));
-      let up = [];
-      let txt = [];
-      if(prev){
-        if(prev.data){
-          up = [...prev.data.updates];
-          txt = [...prev.data.text];
-        }
-      }
-      const newData = {
-        updates: [...up, ...delta.ops],
-        text: [...txt, getInsertedDataFromQuill(delta)],
-        content: content
-      };
-      await Document.findByIdAndUpdate(documentId, { data: newData });
-      socket.emit("new-updates", {
-        delta: delta,
-        userList: userList,
-        senderId: sId,
-      });
-    });
+    });  
 
     socket.on("join-document", async (message) => {
       const { documentId, sId, userId } = message;
