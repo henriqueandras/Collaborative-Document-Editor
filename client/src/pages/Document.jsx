@@ -10,6 +10,7 @@ import { v4 as uuid } from "uuid";
 export const Document = () => {
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get("id");
+  const userId = uuid();
   const [quill, setQuill] = useState();
   const [ err, setErr ] = useState({
     error:"",
@@ -19,7 +20,12 @@ export const Document = () => {
 
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
+    console.log("rec uid: ", delta.userId, " uid: ", userId);
     quill.updateContents(delta.ops);
+    if(delta.userId === userId && delta.selection != null){
+      console.log("setting selection");
+      quill.setSelection(delta.selection.index, delta.selection.length);
+    }
   };
 
   const handlerSetContent = (delta) => {
@@ -31,7 +37,7 @@ export const Document = () => {
     console.log("rejoining doc...");
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: userId
     });
   };
 
@@ -58,7 +64,7 @@ export const Document = () => {
     
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: userId
     });
   }, [socket]);
 
@@ -69,15 +75,29 @@ export const Document = () => {
         console.log(quill.getContents());
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
-        socket.socket.emit("updates", {
-          documentId: documentId,
-          delta: delta,
-          content: quillContent
+        console.log("delta", delta);
+
+        queueMicrotask(() => {
+          delta.userId = userId;
+          delta.selection = quill.getSelection();
+          socket.socket.emit("updates", {
+            documentId: documentId,
+            delta: delta,
+            content: quillContent
+          });
+
+          try{
+            const d = new Delta(delta);
+            console.log(d.slice());
+            console.log("delta inverse", d.invert());
+            console.log("oldDelta", oldDelta);
+            quill.updateContents(d.invert(), "silent");
+          }
+          catch{
+            quill.setContents(oldDelta);
+            quill.setSelection(delta.selection.index, delta.selection.length);
+          }
         });
-        // 
-        const d = new Delta(delta);
-        console.log("delta inverse", d.invert());
-        quill.updateContents(d.invert(), "silent");
       }
     });
   }, [socket, quill]);
