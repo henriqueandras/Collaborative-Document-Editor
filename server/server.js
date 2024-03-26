@@ -216,6 +216,8 @@ function createSocketListeners(io) {
         content: content
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
+      const beg = Date.now();
+      // while(Date.now()-beg<2000){};
       socket.emit("new-updates", {
         delta: delta,
         userList: userList,
@@ -235,6 +237,7 @@ function createSocketListeners(io) {
       console.log("document", document);
       if(document){
         const userId = rooms.getCurrentUsers(documentId).length;
+        console.log(`Userid: ${userId}`);
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,

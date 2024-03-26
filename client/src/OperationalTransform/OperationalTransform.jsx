@@ -1,9 +1,5 @@
-class OperationalTransform{
-    constructor(str){
-        this.str = str;
-    }
     
-    apply(operation){
+    function apply(operation){
         const action = this.getAction(operation);
         const retain = operation.ops[0].retain;
         switch(action){
@@ -27,7 +23,7 @@ class OperationalTransform{
 /**delta {"ops":[{"retain":16},{"delete":2}]} */
 
 
-    getAction(data){
+function getAction(data){
         //Action is either "insert" or "delete"
         const actionEl = data.ops[1];
         if("insert" in actionEl){
@@ -40,9 +36,9 @@ class OperationalTransform{
         }
     }
 
-    transformLessThan(old, newData){
-        const oldAction = this.getAction(old);
-        const newDataAction = this.getAction(newData);
+    function transformLessThan(old, newData){
+        const oldAction = getAction(old);
+        const newDataAction = getAction(newData);
         if(oldAction === "insert" && newDataAction === "insert"){
             newData.ops[0].retain++;
         }
@@ -87,9 +83,9 @@ class OperationalTransform{
     }
     
 
-    transformGreaterThan(old, newData){
-        const oldAction = this.getAction(old);
-        const newDataAction = this.getAction(newData);
+    function transformGreaterThan(old, newData){
+        const oldAction = getAction(old);
+        const newDataAction = getAction(newData);
         if(oldAction === "insert" && newDataAction === "delete"){
             const oldRetain = old.ops[0].retain;
             const newRetain = newData.ops[0].retain;
@@ -130,9 +126,9 @@ class OperationalTransform{
     }
 
 
-    transformEqual(old, newData){
-        const oldAction = this.getAction(old);
-        const newDataAction = this.getAction(newData);
+    function transformEqual(old, newData){
+        const oldAction = getAction(old);
+        const newDataAction = getAction(newData);
         if(oldAction === "insert" && newDataAction === "insert"){
             // break by process ids
             // "gibbVBerish"
@@ -158,7 +154,7 @@ class OperationalTransform{
         }
     }
     
-    transformOperations(old, newData){
+    function transformOperations(old, newData){
         if(old === "BEG"){
             return [[newData], newData];
         }
@@ -167,15 +163,17 @@ class OperationalTransform{
         const newRetain = newData.ops[0].retain;
 
         if(oldRetain<newRetain){
-            return this.transformLessThan(old, newData);
+            return transformLessThan(old, newData);
         }else if(oldRetain>newRetain){
-            return this.transformGreaterThan(old, newData);
+            return transformGreaterThan(old, newData);
         }else{
-            return this.transformEqual(old, newData);
+            return transformEqual(old, newData);
         }
     }
 
-    handleTransforms(old, newData){
+    function handleTransforms(old, newData,print){
+        console.log("HANDLE transforms");
+        print(`prev: ${JSON.stringify(old)}, curr: ${newData}`);
         if(old === "BEG"){
             return [[newData], newData];
         }
@@ -188,10 +186,12 @@ class OperationalTransform{
         //         ops.push(trans[0]);
         //     }
         // }
-        return this.transformOperations(old, newData);
+        const trans = transformOperations(ensureStructure(old), ensureStructure(newData));
+        print(`trans: ${JSON.stringify(trans)}`);
+        return trans;
     }
 
-    ensureStructure(data){
+    function ensureStructure(data){
         if("ops" in data){
             if(data.ops.length === 2){
                 return data;
@@ -204,11 +204,10 @@ class OperationalTransform{
             return {ops:[{retain:0},{insert:''}]};
         }
     }
-}
 
 
 
-export function comparison(listOfOldOps, currentOp, ot, print){
+export function comparison(listOfOldOps, currentOp, print){
     let newOp = currentOp.operation;
     if(listOfOldOps.length===0){
         return {
@@ -216,24 +215,29 @@ export function comparison(listOfOldOps, currentOp, ot, print){
             version:currentOp.version
         };
     }
+
+    print(`Comp: ${JSON.stringify(listOfOldOps)} - ${JSON.stringify(currentOp)}`);
+
     for(let i=0;i<listOfOldOps.length;i++){
         const old = listOfOldOps[i];
-        if(currentOp.version<old.version || (currentOp.version === old.version && old.userId !== currentOp.userId )){
-            print(`Old: ${JSON.stringify(old)}, New: ${JSON.stringify(newOp)}`);
+        print(`Old: ${JSON.stringify(old)}, New: ${JSON.stringify(currentOp)}`);
+        if(currentOp.version<=old.version && (old.userId !== currentOp.userId )){
             if(!("ops" in newOp)){
                 if(newOp.length===1){
-                    const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp[0]);
+                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print);
                     newOp = newAlteredOp;
                 }else{
                     //TODO for deletion multiple ops created figure out how to handle
-                    const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp[0]);
+                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print);
                     
-                    const [newAlteredOp2,prev2] = ot.handleTransforms(newAlteredOp[0], newOp[1]);
-                    newOp = newAlteredOp2;
+                    const [newAlteredOp2,prev2] = handleTransforms(old.operation, newOp[1], print);
+                    newOp[0] = newAlteredOp[0];
+                    newOp[1] = newAlteredOp2[0];
                 }
             }else{
-                const [newAlteredOp,prev] = ot.handleTransforms(old.operation, newOp);
-                newOp = newAlteredOp;
+                const val = handleTransforms(old.operation, newOp, print);
+                print(`handleTransforms value: ${JSON.stringify(val)}`);
+                newOp = val[0];
             }
         }
     }
@@ -332,5 +336,3 @@ if newDelete < oldDelete : do nothing
 if newDelete > oldDelete: newDelete = oldDelete - newDelete (only delete remaining)
 if newDelete == oldDelete : do nothing since already did
 */
-
-export default OperationalTransform;

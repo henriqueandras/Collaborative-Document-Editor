@@ -5,7 +5,7 @@ import { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
-import OperationalTransform, { comparison } from "../OperationalTransform/OperationalTransform";
+import { comparison } from "../OperationalTransform/OperationalTransform";
 
 function syncTimeout(time){
   const beg = Date.now();
@@ -15,7 +15,6 @@ function syncTimeout(time){
 }
 
 export const Document = () => {
-  const ot = new OperationalTransform();
   // const defaultTransform = {ops:[{retain:0},{insert:''}]};
   const [searchParams] = useSearchParams();
   // const [ prevTransform, setPrevTransform ] = useState("BEG");
@@ -28,7 +27,7 @@ export const Document = () => {
   const socket = useContext(SocketClient);
   const prevTransformationList = useRef([]);
   const version = useRef(0);
-  const [userId, setUserId] = useState(0);
+  const userId = useRef(uuid());
 
   const print = (str) => {
     console.log(str);
@@ -37,55 +36,56 @@ export const Document = () => {
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
     console.log("list", prevTransformationList.current.length);
-    const transformsToPerform = comparison(prevTransformationList.current, delta ,ot, print);
+    const transformsToPerform = comparison(prevTransformationList.current, delta , print);
     console.log(`NEW: ${JSON.stringify(transformsToPerform)}, OLD: ${JSON.stringify(delta)}`);
     if("ops" in transformsToPerform.operation){
-      if("retain" in transformsToPerform.operation.ops[0]){
-        const content = quill.getContents() ?? "";
-        const minLength = transformsToPerform.operation.ops[0].retain < content.length() ? transformsToPerform.operation.ops[0].retain : transformsToPerform.operation.ops[0].retain-1;
-        const revisedOp = {ops:[{retain:minLength},transformsToPerform.operation.ops[1]]};
-        console.log("minLength",content.length(), transformsToPerform.operation.ops[0].retain);
+      // if("retain" in transformsToPerform.operation.ops[0]){
+      //   const content = quill.getContents() ?? "";
+      //   const minLength = transformsToPerform.operation.ops[0].retain < content.length() ? transformsToPerform.operation.ops[0].retain : transformsToPerform.operation.ops[0].retain-1;
+      //   const revisedOp = {ops:[{retain:minLength},transformsToPerform.operation.ops[1]]};
+      //   console.log("minLength",content.length(), transformsToPerform.operation.ops[0].retain);
 
-        quill.updateContents(revisedOp);
-        prevTransformationList.current.push({
-          operation:revisedOp,
-          version:transformsToPerform.version,
-          userId: delta.userId
-        });
-      }else{
-        console.log("transformsToPerform.operation",transformsToPerform.operation);
-        quill.updateContents(transformsToPerform.operation);
-        prevTransformationList.current.push({
-          operation:transformsToPerform.operation,
-          version:transformsToPerform.version,
-          userId: delta.userId
-        });
-      }
+      //   quill.updateContents(revisedOp);
+      //   prevTransformationList.current.push({
+      //     operation:revisedOp,
+      //     version:transformsToPerform.version,
+      //     userId: delta.userId
+      //   });
+      // }else{
+      // }
+      console.log("transformsToPerform.operation",transformsToPerform.operation);
+      quill.updateContents(transformsToPerform.operation);
+      prevTransformationList.current.push({
+        operation:transformsToPerform.operation,
+        version:transformsToPerform.version,
+        userId: delta.userId
+      });
     }else{
       transformsToPerform.operation.forEach((newOp)=>{
-        if("retain" in newOp.ops[0]){
-          const content = quill.getContents() ?? "";
-          const minLength = newOp.ops[0].retain < content.length() ? newOp.ops[0].retain : newOp.ops[0].retain-1;
-          const revisedOp = {ops:[{retain:minLength},newOp.ops[1]]};
-          console.log("minLength",content.length(), newOp.ops[0].retain);
-          quill.updateContents(revisedOp);
-          prevTransformationList.current.push({
-            operation:revisedOp,
-            version:transformsToPerform.version,
-            userId: delta.userId
-          });
-        }else{
-          console.log("newOps", newOp.ops);
-          quill.updateContents(newOp.ops);
-          prevTransformationList.current.push({
-            operation:newOp,
-            version:transformsToPerform.version,
-            userId: delta.userId
-          });
-        }
+        // if("retain" in newOp.ops[0]){
+        //   const content = quill.getContents() ?? "";
+        //   const minLength = newOp.ops[0].retain < content.length() ? newOp.ops[0].retain : newOp.ops[0].retain-1;
+        //   const revisedOp = {ops:[{retain:minLength},newOp.ops[1]]};
+        //   console.log("minLength",content.length(), newOp.ops[0].retain);
+        //   quill.updateContents(revisedOp);
+        //   prevTransformationList.current.push({
+        //     operation:revisedOp,
+        //     version:transformsToPerform.version,
+        //     userId: delta.userId
+        //   });
+        // }else{
+        // }
+        console.log("newOps", newOp.ops);
+        quill.updateContents(newOp.ops);
+        prevTransformationList.current.push({
+          operation:newOp,
+          version:transformsToPerform.version,
+          userId: delta.userId
+        });
       });
     }
-    version.current = transformsToPerform.version;
+    version.current = prevTransformationList.current.length;
+    console.log("recieved version", version.current);
     // const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
     // newReceivedTransforms.forEach((newReceivedTransform)=>{
     //   console.log("Applying:", newReceivedTransform.ops);
@@ -101,7 +101,8 @@ export const Document = () => {
 
   const handlerSetContent = (data) => {
     console.log(data);
-    setUserId(data.userId);
+    // setUserId(data.userId);
+    // userId.current = data.userId;
     version.current = data.version;
     quill.setContents(data.delta);
   };
@@ -141,20 +142,23 @@ export const Document = () => {
         console.log("quillContent", quillContent);
         prevTransformationList.current.push({
           operation:delta,
-          version:version.current,
-          userId: userId
+          version:version.current+1,
+          userId: userId.current
         })
         // syncTimeout(2000);
-        setTimeout(()=>{
-          socket.socket.emit("updates", {
-            documentId: documentId,
-            delta: delta,
-            content: quillContent,
-            userId: userId,
-            version:version.current
-          });
-          version.current++
-        },2000);
+        const ver = version.current;
+        // setTimeout(()=>{
+        //   console.log("version:",ver);
+        // },2000);
+        socket.socket.emit("updates", {
+          documentId: documentId,
+          delta: delta,
+          content: quillContent,
+          userId: userId.current,
+          version:ver
+        });
+        version.current++;
+        console.log("Current version", version.current);
         // setPrevTransform(ot.ensureStructure(delta));
       }
     });
