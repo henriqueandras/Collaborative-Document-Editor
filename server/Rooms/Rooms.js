@@ -1,10 +1,23 @@
 class Rooms{
     constructor(){
         this.rooms = {};
+        this.proxy_sid = null;
+    }
+
+    getProxySID(){
+        return this.proxy_sid;
+    }
+
+    setProxySID(sid){
+        return this.proxy_sid = sid;
     }
 
     getDocuments(){
         return Object.keys(this.rooms);
+    }
+
+    includesDocument(documentId){
+        return Object.keys(this.rooms).includes(documentId);
     }
 
     createRoom(documentId){
@@ -55,6 +68,27 @@ class Rooms{
         documents.forEach((documentId)=>{
             this.removeCurrentUsers(documentId, user);
         });
+    }
+
+    removeAllCurrentUsers()
+    {
+        const docs = Object.entries(this.rooms);
+        for (let [key, value] of docs)
+        {
+            value.currentUsers = [];
+        }
+    }
+
+    getAllCurrentUsers()
+    {
+        let users = [];
+
+        const docs = Object.entries(this.rooms);
+        for (let [key, value] of docs)
+        {
+            users = [...users, ...value.currentUsers];
+        }
+        return users;
     }
 
 }
