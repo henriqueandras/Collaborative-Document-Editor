@@ -40,9 +40,9 @@ if(!useLocalDb){
 }else{
   console.log("Running local in-mem db")
 }
-const defaultValue = { updates: [], text: [], version:0 };
+const defaultValue = { updates: [], text: [] };
 
-const currentEndpoint = `http://10.59.175.71:${PORT}`;
+const currentEndpoint = `http://10.59.175.74:${PORT}`;
 // const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
 const endpointPORT = currentEndpoint.split(":")[2];
 
@@ -207,7 +207,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId, content, userId, version, uId, prevDelta, deltaId } = message;
+      const { documentId, delta, sId, content } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -227,19 +227,16 @@ function createSocketListeners(io) {
       console.log("delta", JSON.stringify(delta));
       let up = [];
       let txt = [];
-      let docVer = 0;
       if(prev){
         if(prev.data){
           up = [...prev.data.updates];
           txt = [...prev.data.text];
-          docVer = prev.data.version+1;
         }
       }
       const newData = {
         updates: [...up, ...delta.ops],
         text: [...txt, getInsertedDataFromQuill(delta)],
-        content: content,
-        version: docVer
+        content: content
       };
       // await Document.findByIdAndUpdate(documentId, { data: newData });
       await synchronizer.syncFindByIdAndUpdate(Document, {id: documentId, data: newData}, otherServerSockets);
@@ -247,11 +244,6 @@ function createSocketListeners(io) {
         delta: delta,
         userList: userList,
         senderId: sId,
-        userId: userId, 
-        version: version,
-        uId: uId,
-        prevDelta:prevDelta, 
-        deltaId: deltaId
       });
     });
 
@@ -270,13 +262,9 @@ function createSocketListeners(io) {
         rooms.addCurrentUsers(documentId, sId);
         rooms.addPermittedUsers(documentId, sId);
 
-        const userId = rooms.getCurrentUsers(documentId).length;
-        console.log(`Userid: ${userId}`);
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,
-          userId: userId,
-          version: document.data.version
         });
       }else{
         try{
@@ -288,13 +276,9 @@ function createSocketListeners(io) {
           console.log(`ERROR:${e}`);
         }
         const document = await Document.findById(documentId);
-        const userId = rooms.getCurrentUsers(documentId).length;
-
         socket.emit("join-document-data", {
           text: document.data.content,
           sId: sId,
-          userId: userId,
-          version:0
         });
       }
       console.log(`current users: ${rooms.getAllCurrentUsers()}`);

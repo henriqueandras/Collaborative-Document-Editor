@@ -24,8 +24,9 @@ const ioserver = require("socket.io")(http, {
 });
 
 const listOfEndpoints = [
-  "ws://localhost:3001",
-  "ws://localhost:3002",
+  "ws://10.59.175.71:3001",
+  "ws://10.59.175.70:3002",
+  "ws://10.59.175.74:3003",
 ];
 
 let SERVER_ENDPOINT = listOfEndpoints.shift();
