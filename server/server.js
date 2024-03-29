@@ -6,6 +6,8 @@ let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
 const ioClient = require("socket.io-client");
 
+const synchronizer = require("./Database/SyncDoc")
+
 const app = express();
 const http = require("http").Server(app);
 
@@ -49,8 +51,8 @@ const serverConnections = [];
 const listOfEndpoints = [
   "http://localhost:3001",
   "http://localhost:3002",
-  "http://localhost:3003",
-  "http://localhost:3004",
+  // "http://localhost:3003",
+  // "http://localhost:3004",
 ];
 let running = false;
 let bullyReceived = false;
@@ -66,7 +68,7 @@ const ioServer = require("socket.io")(http, {
 listOfEndpoints.forEach((serverEndpoint) => {
   if (!serverEndpoint.includes(String(endpointPORT))) {
     const socketServer = ioClient(serverEndpoint);
-    createSocketListeners(socketServer);
+    // createSocketListeners(socketServer);
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
       sockId: socketServer.id,
@@ -90,6 +92,25 @@ function createSocketListeners(io) {
       serverConnections.push(socket);
     }
     console.log("A client connected!");
+
+    // middleware
+    socket.use(([event, ...args], next) => {
+      if(event === 'create-document' || event === 'updates' || event === 'join-document' || 
+         event === 'client-disconnect')
+      {
+        console.log(`middleware called on event ${event}`);
+        if(!rooms.getProxySID() || rooms.getProxySID() != socket.id)
+        {
+          console.log("New proxy, clearing rooms...")
+          rooms.setProxySID(socket.id);
+          rooms.removeAllCurrentUsers();
+        }
+      }
+      next();
+    });
+
+    // Set up socket for synchronization
+    synchronizer.setupSocketForSync(socket, Document);
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
@@ -177,7 +198,9 @@ function createSocketListeners(io) {
       rooms.addPermittedUsers(documentId, sId);
       rooms.addCurrentUsers(documentId, sId);
       console.log("creating document: ", documentId);
-      await Document.create({ _id: documentId, data: defaultValue });
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
+      // await Document.create({ _id: documentId, data: defaultValue });
+      await synchronizer.syncCreateDocument(Document, {id: documentId, data: defaultValue}, otherServerSockets);
     }
 
     socket.on("create-document", handleCreateDocument);
@@ -215,9 +238,8 @@ function createSocketListeners(io) {
         text: [...txt, getInsertedDataFromQuill(delta)],
         content: content
       };
-      await Document.findByIdAndUpdate(documentId, { data: newData });
-      const beg = Date.now();
-      while(Date.now()-beg<2000){};
+      // await Document.findByIdAndUpdate(documentId, { data: newData });
+      await synchronizer.syncFindByIdAndUpdate(Document, {id: documentId, data: newData}, otherServerSockets);
       socket.emit("new-updates", {
         delta: delta,
         userList: userList,
@@ -232,13 +254,19 @@ function createSocketListeners(io) {
 
     socket.on("join-document", async (message) => {
       const { documentId, sId, userId } = message;
-      rooms.removeFromAnyOtherRoom(sId);
-      rooms.addCurrentUsers(documentId, sId);
-      rooms.addPermittedUsers(documentId, sId);
       console.log("JOIN DOCUMENT", message);
       const document = await Document.findById(documentId);
       console.log("document", document);
       if(document){
+        if(!rooms.includesDocument(documentId))
+        {
+          rooms.createRoom(documentId);
+        }
+
+        rooms.removeFromAnyOtherRoom(sId);
+        rooms.addCurrentUsers(documentId, sId);
+        rooms.addPermittedUsers(documentId, sId);
+
         const userId = rooms.getCurrentUsers(documentId).length;
         console.log(`Userid: ${userId}`);
         socket.emit("join-document-data", {
@@ -266,11 +294,13 @@ function createSocketListeners(io) {
           version:0
         });
       }
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
     });
 
     socket.on("client-disconnect", async (message) => {
       const { sId } = message;
       rooms.removeFromAnyOtherRoom(sId);
+      console.log(`current users: ${rooms.getAllCurrentUsers()}`);
     });
   });
 }

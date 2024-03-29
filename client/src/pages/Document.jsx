@@ -136,6 +136,14 @@ export const Document = () => {
     uId.current = data.userId;
   };
 
+  const handlerRejoinDoc = (msg) => {
+    console.log("rejoining doc...");
+    socket.socket.emit("join-document", {
+      documentId: documentId,
+      userId: uuid()
+    });
+  };
+
   const handleErrorMessage = (message) => {
     const { err:errorMessage, resolution } = message;
     setErr({
@@ -151,6 +159,7 @@ export const Document = () => {
     socket.socket.on("new-updates", handlerUpdateContent);
 
     socket.socket.on("join-document-data", handlerSetContent);
+    socket.socket.on("rejoin-doc", handlerRejoinDoc);
     socket.socket.on("error_message", handleErrorMessage);
   }, [socket, quill]);
 
