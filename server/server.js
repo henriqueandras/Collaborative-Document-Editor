@@ -40,7 +40,7 @@ if(!useLocalDb){
 }else{
   console.log("Running local in-mem db")
 }
-const defaultValue = { updates: [], text: [] };
+const defaultValue = { updates: [], text: [], version:0 };
 
 const currentEndpoint = `http://localhost:${PORT}`;
 // const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
@@ -227,16 +227,19 @@ function createSocketListeners(io) {
       console.log("delta", JSON.stringify(delta));
       let up = [];
       let txt = [];
+      let docVer = 0;
       if(prev){
         if(prev.data){
           up = [...prev.data.updates];
           txt = [...prev.data.text];
+          docVer = prev.data.version+1;
         }
       }
       const newData = {
         updates: [...up, ...delta.ops],
         text: [...txt, getInsertedDataFromQuill(delta)],
-        content: content
+        content: content,
+        version: docVer
       };
       // await Document.findByIdAndUpdate(documentId, { data: newData });
       await synchronizer.syncFindByIdAndUpdate(Document, {id: documentId, data: newData}, otherServerSockets);
@@ -273,7 +276,7 @@ function createSocketListeners(io) {
           text: document.data.content,
           sId: sId,
           userId: userId,
-          version: 0
+          version: document.data.version
         });
       }else{
         try{
