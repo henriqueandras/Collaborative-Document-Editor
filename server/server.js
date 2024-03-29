@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const Rooms = require("./Rooms/rooms");
+const Rooms = require("./Rooms/Rooms");
 const { connect } = require("./Database/db");
 let Document = require("./Database/Document/Document");
 const { getInsertedDataFromQuill } = require("./util/util");
