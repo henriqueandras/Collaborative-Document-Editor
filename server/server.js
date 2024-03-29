@@ -184,7 +184,7 @@ function createSocketListeners(io) {
 
     socket.on("updates", async (message) => {
       console.log("RECIEVED UPDATES");
-      const { documentId, delta, sId, content, userId, version } = message;
+      const { documentId, delta, sId, content, userId, version, uId, prevDelta, deltaId } = message;
       const userList = rooms.getCurrentUsers(documentId);
       console.log(userList);
       console.log(documentId);
@@ -217,13 +217,16 @@ function createSocketListeners(io) {
       };
       await Document.findByIdAndUpdate(documentId, { data: newData });
       const beg = Date.now();
-      // while(Date.now()-beg<2000){};
+      while(Date.now()-beg<2000){};
       socket.emit("new-updates", {
         delta: delta,
         userList: userList,
         senderId: sId,
         userId: userId, 
-        version: version
+        version: version,
+        uId: uId,
+        prevDelta:prevDelta, 
+        deltaId: deltaId
       });
     });
 

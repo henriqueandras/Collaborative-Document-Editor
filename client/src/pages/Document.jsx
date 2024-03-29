@@ -5,7 +5,7 @@ import { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
-import { comparison } from "../OperationalTransform/OperationalTransform";
+import { comparison, adjustForQuill, reviseHistory } from "../OperationalTransform/OperationalTransform";
 
 function syncTimeout(time){
   const beg = Date.now();
@@ -28,6 +28,8 @@ export const Document = () => {
   const prevTransformationList = useRef([]);
   const version = useRef(0);
   const userId = useRef(uuid());
+  const uId = useRef(0);
+  const sendList = useRef([]);
 
   const print = (str) => {
     console.log(str);
@@ -35,9 +37,18 @@ export const Document = () => {
 
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
-    console.log("list", prevTransformationList.current.length);
+    console.log("list", prevTransformationList.current);
     const transformsToPerform = comparison(prevTransformationList.current, delta , print);
-    console.log(`NEW: ${JSON.stringify(transformsToPerform)}, OLD: ${JSON.stringify(delta)}`);
+    if(transformsToPerform.length>0){
+      for(const op in transformsToPerform){
+        console.log(`New:`, op);
+      }
+    }
+    else{
+      console.log(`New: `,transformsToPerform);
+    }
+
+    // console.log(`NEW: ${JSON.stringify(transformsToPerform)}, OLD: ${JSON.stringify(delta)}`);
     if("ops" in transformsToPerform.operation){
       // if("retain" in transformsToPerform.operation.ops[0]){
       //   const content = quill.getContents() ?? "";
@@ -53,12 +64,25 @@ export const Document = () => {
       //   });
       // }else{
       // }
+      
+      // const [removals,additions, ver] = reviseHistory(prevTransformationList.current, transformsToPerform.operation);
+      
+      // for(const remove of removals){
+        
+      // }
+      // for(const add of additions){
+      //   quill.updateContents(adjustForQuill(add.operation));
+      // }
       console.log("transformsToPerform.operation",transformsToPerform.operation);
-      quill.updateContents(transformsToPerform.operation);
+      quill.updateContents(adjustForQuill(transformsToPerform.operation));
       prevTransformationList.current.push({
         operation:transformsToPerform.operation,
-        version:transformsToPerform.version,
-        userId: delta.userId
+        version:prevTransformationList.current.length+1,
+        userId: delta.userId,
+        uId: delta.uId,
+        prevVersion:delta.version,
+        deltaId:delta.deltaId,
+        og:delta.operation
       });
     }else{
       transformsToPerform.operation.forEach((newOp)=>{
@@ -76,15 +100,19 @@ export const Document = () => {
         // }else{
         // }
         console.log("newOps", newOp.ops);
-        quill.updateContents(newOp.ops);
+        quill.updateContents(adjustForQuill(newOp));
         prevTransformationList.current.push({
           operation:newOp,
-          version:transformsToPerform.version,
-          userId: delta.userId
+          version:prevTransformationList.current.length+1,
+          userId: delta.userId,
+          uId:delta.uId,
+          prevVersion:delta.version,
+          deltaId:delta.deltaId,
+          og:delta.operation
         });
       });
     }
-    version.current = prevTransformationList.current.length;
+    version.current = prevTransformationList.current.length>0 ? prevTransformationList.current[prevTransformationList.current.length-1].version : 0;
     console.log("recieved version", version.current);
     // const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
     // newReceivedTransforms.forEach((newReceivedTransform)=>{
@@ -105,6 +133,7 @@ export const Document = () => {
     // userId.current = data.userId;
     version.current = data.version;
     quill.setContents(data.delta);
+    uId.current = data.userId;
   };
 
   const handleErrorMessage = (message) => {
@@ -137,26 +166,36 @@ export const Document = () => {
     if (quill == null || socket.socket == null || documentId == null) return;
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        console.log(delta);
+        console.log("DELTA",delta);
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
         prevTransformationList.current.push({
           operation:delta,
           version:version.current+1,
-          userId: userId.current
-        })
+          userId: userId.current,
+          uId: uId.current
+        });
         // syncTimeout(2000);
         const ver = version.current;
         // setTimeout(()=>{
         //   console.log("version:",ver);
         // },2000);
+        const deltaId = uuid();
         socket.socket.emit("updates", {
           documentId: documentId,
           delta: delta,
           content: quillContent,
           userId: userId.current,
-          version:ver
+          version:ver+1,
+          uId: uId.current,
+          prevDelta:sendList.current[sendList.current.length-1],
+          deltaId:deltaId
         });
+        sendList.current.push({
+          deltaId:deltaId,
+          delta:delta
+        });
+
         version.current++;
         console.log("Current version", version.current);
         // setPrevTransform(ot.ensureStructure(delta));

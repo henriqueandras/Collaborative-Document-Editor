@@ -52,7 +52,7 @@ function setupProxyServerConnection(server_socket){
     });
   
     server_socket.on("new-updates", async (message) => {
-      const { delta, userList, senderId, userId, version } = message;
+      const { delta, userList, senderId, userId, version, uId,prevDelta, deltaId } = message;
       userList.map((sock) => {
         console.log(delta, sock);
         // console.log(io.sockets);
@@ -60,7 +60,10 @@ function setupProxyServerConnection(server_socket){
           ioserver.to(sock).emit("new-updates", {
             operation: delta,
             version: version,
-            userId: userId
+            userId: userId,
+            uId: uId,
+            prevDelta:prevDelta, 
+            deltaId: deltaId
           });
         }
       });
@@ -129,14 +132,17 @@ function setupClientProxyConnection(ioServer, server_socket){
     });
     socket.on("updates", async (message) => {
       console.log("updates called...", JSON.stringify(message));
-      const { documentId, delta, content, version,userId} = message;
+      const { documentId, delta, content, version,userId, uId,prevDelta, deltaId } = message;
       server_socket.emit("updates", {
         documentId: documentId,
         delta: delta,
         sId: socket.id,
         content: content,
         version: version,
-        userId: userId
+        userId: userId,
+        uId: uId,
+        prevDelta:prevDelta,
+        deltaId:deltaId
       });
     });
     socket.on("disconnect", async () => {

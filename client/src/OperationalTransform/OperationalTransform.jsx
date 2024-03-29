@@ -126,7 +126,7 @@ function getAction(data){
     }
 
 
-    function transformEqual(old, newData){
+    function transformEqual(old, newData, oldId, newId){
         const oldAction = getAction(old);
         const newDataAction = getAction(newData);
         if(oldAction === "insert" && newDataAction === "insert"){
@@ -134,10 +134,16 @@ function getAction(data){
             // "gibbVBerish"
             // "gibbBVerish"
             //  012345678
+            if(oldId<=newId){
+                newData.ops[0].retain++;
+            }
+            return [[newData], newData];
         }
         else if(oldAction === "insert" && newDataAction === "delete"){
             newData.ops[0].retain++;
             return [[newData], newData];
+            // abTVc
+            // abTVc
         }
         else if(oldAction === "delete" && newDataAction === "insert"){
             return [[newData], newData];
@@ -154,7 +160,7 @@ function getAction(data){
         }
     }
     
-    function transformOperations(old, newData){
+    function transformOperations(old, newData, oldId, newId){
         if(old === "BEG"){
             return [[newData], newData];
         }
@@ -167,11 +173,11 @@ function getAction(data){
         }else if(oldRetain>newRetain){
             return transformGreaterThan(old, newData);
         }else{
-            return transformEqual(old, newData);
+            return transformEqual(old, newData, oldId, newId);
         }
     }
 
-    function handleTransforms(old, newData,print){
+    function handleTransforms(old, newData,print, oldId, newId){
         console.log("HANDLE transforms");
         print(`prev: ${JSON.stringify(old)}, curr: ${newData}`);
         if(old === "BEG"){
@@ -186,7 +192,7 @@ function getAction(data){
         //         ops.push(trans[0]);
         //     }
         // }
-        const trans = transformOperations(ensureStructure(old), ensureStructure(newData));
+        const trans = transformOperations(ensureStructure(old), ensureStructure(newData), oldId, newId);
         print(`trans: ${JSON.stringify(trans)}`);
         return trans;
     }
@@ -197,18 +203,44 @@ function getAction(data){
                 return data;
             }else{
                 if("delete" in data.ops[0]){
-                    return {ops:[{retain:0},data.ops[0]]}
+                    return {"ops":[{"retain":0},data.ops[0]]};
+                }else{
+                    return {"ops":[{"retain":0},data.ops[0]]};
                 }
             }
         }else{
-            return {ops:[{retain:0},{insert:''}]};
+            return {"ops":[{"retain":0},{"insert":''}]};
         }
     }
 
+export function adjustForQuill(data){
+    if("ops" in data){
+        if(data.ops.length === 2){
+            if("retain" in data.ops[0]){
+                if(data.ops[0].retain === 0){
+                    return {"ops":[data.ops[1]]};
+                }
+            }
+        }
+        return data;
+    }else{
+        return {"ops":[{"retain":0},{"insert":''}]};
+    }
+}
 
+function isFromOwnClient(old, currentOp, currentOpOg){
+    if(!old.deltaId || !currentOp.prevDelta){
+        return false;
+    }
+    if(((currentOp.prevDelta.deltaId===old.deltaId && old.userId===currentOp.userId)&&(ensureStructure(currentOp.prevDelta.delta).ops[0].retain<=ensureStructure(currentOpOg.operation).ops[0].retain) && ((ensureStructure(currentOp.operation).ops[0].retain<=ensureStructure(old.operation).ops[0].retain)))||(old.userId===currentOp.userId && (ensureStructure(old.og).ops[0].retain<ensureStructure(currentOpOg.operation).ops[0].retain && (ensureStructure(currentOp.operation).ops[0].retain<=ensureStructure(old.operation).ops[0].retain)))){
+        return true;
+    }
+    return false;
+}
 
 export function comparison(listOfOldOps, currentOp, print){
     let newOp = currentOp.operation;
+    const currentOpOg = JSON.parse(JSON.stringify(currentOp));
     if(listOfOldOps.length===0){
         return {
             operation:[newOp],
@@ -221,23 +253,23 @@ export function comparison(listOfOldOps, currentOp, print){
     for(let i=0;i<listOfOldOps.length;i++){
         const old = listOfOldOps[i];
         print(`Old: ${JSON.stringify(old)}, New: ${JSON.stringify(currentOp)}`);
-        if(currentOp.version<=old.version && (old.userId !== currentOp.userId )){
+        if((currentOp.version<=old.version && (old.userId !== currentOp.userId ))||(isFromOwnClient(old, currentOp, currentOpOg))){
             if(!("ops" in newOp)){
                 if(newOp.length===1){
-                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print);
-                    newOp = newAlteredOp;
+                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print, old.userId, currentOp.userId);
+                    newOp = JSON.parse(JSON.stringify(newAlteredOp));
                 }else{
                     //TODO for deletion multiple ops created figure out how to handle
-                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print);
+                    const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print, old.userId, currentOp.userId);
                     
-                    const [newAlteredOp2,prev2] = handleTransforms(old.operation, newOp[1], print);
-                    newOp[0] = newAlteredOp[0];
-                    newOp[1] = newAlteredOp2[0];
+                    const [newAlteredOp2,prev2] = handleTransforms(old.operation, newOp[1], print, old.userId, currentOp.userId);
+                    newOp[0] = JSON.parse(JSON.stringify(newAlteredOp[0]));
+                    newOp[1] = JSON.parse(JSON.stringify(newAlteredOp2[0]));
                 }
             }else{
-                const val = handleTransforms(old.operation, newOp, print);
+                const val = handleTransforms(old.operation, newOp, print, old.userId, currentOp.userId);
                 print(`handleTransforms value: ${JSON.stringify(val)}`);
-                newOp = val[0];
+                newOp = JSON.parse(JSON.stringify(val[0]));
             }
         }
     }
@@ -245,6 +277,26 @@ export function comparison(listOfOldOps, currentOp, print){
         operation:newOp,
         version:listOfOldOps.length>0 ? listOfOldOps[listOfOldOps.length-1].version+1 :currentOp.version+1  
     };
+}
+
+export function reviseHistory(listOfOldOps, currentOp){
+    const op = currentOp.operation.ops[0];
+    if(!("retain" in op)){
+        return [[],[currentOp.operation]];
+    }
+    const removeOp = [];
+    const addOp = [currentOp.operation];
+    let version = listOfOldOps[listOfOldOps.length-1].version;
+    for(let i=listOfOldOps.length-1;i>=0;i--){
+        const old = listOfOldOps[i];
+        if("retain" in old.operation.ops[0]){
+            if(old.operation.ops[0].retain > currentOp.operation){
+                removeOp.push(old.operation);
+                version = old.version;
+            }
+        }
+    }
+    return [removeOp, addOp,version];
 }
 /*
 old = retain 3 insert 'm'
