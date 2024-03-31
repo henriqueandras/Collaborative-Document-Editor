@@ -49,14 +49,22 @@ const endpointPORT = currentEndpoint.split(":")[2];
 let otherServerSockets = [];
 const serverConnections = [];
 const listOfEndpoints = [
-  "http://localhost:3001",
+  "http://localhost:3004",
+  "http://localhost:3003",
   "http://localhost:3002",
-  // "http://localhost:3003",
-  // "http://localhost:3004",
+  "http://localhost:3001",
 ];
 let running = false;
 let bullyReceived = false;
 let leader = null;
+
+const maxEndpoint = listOfEndpoints.reduce((acc,curr)=>{
+  const port = Number.parseInt(curr.split(":")[2]);
+  if(port>acc){
+    acc = port;
+  } 
+  return acc;
+},0);
 
 const ioServer = require("socket.io")(http, {
   cors: {
@@ -172,9 +180,9 @@ function createSocketListeners(io) {
                     id:endpointPORT
                   });
                 }
-              }, 100);
+              }, 100 + (maxEndpoint-endpointPORT)*25);
             }
-          }, 100);
+          }, 100 + (maxEndpoint-endpointPORT)*25);
         }
       }
       if (isTop) {

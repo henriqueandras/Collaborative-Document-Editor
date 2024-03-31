@@ -24,8 +24,10 @@ const ioserver = require("socket.io")(http, {
 });
 
 const listOfEndpoints = [
-  "ws://localhost:3001",
-  "ws://localhost:3002",
+  "http://localhost:3004",
+  "http://localhost:3003",
+  "http://localhost:3002",
+  "http://localhost:3001",
 ];
 
 let SERVER_ENDPOINT = listOfEndpoints.shift();
@@ -39,11 +41,15 @@ function setupProxyServerConnection(server_socket){
     server_socket.on("leader-elected", (message) => {
       server_socket.close();
       const { endpoint } = message;
+      if(SERVER_ENDPOINT!==endpoint){
+        listOfEndpoints.push(SERVER_ENDPOINT);
+      }
       server_socket = io(endpoint);
       SERVER_ENDPOINT = endpoint;
       console.log("NEW LEADER: ", endpoint);
       setupProxyServerConnection(server_socket);
       server_socket.on("connect_error", () => {
+        server_socket.close();
         onConnectError(true);
       });
       setupClientProxyConnection(ioserver, server_socket);
