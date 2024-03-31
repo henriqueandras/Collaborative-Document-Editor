@@ -5,11 +5,16 @@ import { useCallback, useContext, useEffect, useState, useRef } from "react";
 import { SocketClient } from "../SocketClientContext";
 import { useSearchParams } from "react-router-dom";
 import { v4 as uuid } from "uuid";
-import { comparison, adjustForQuill, reviseHistory } from "../OperationalTransform/OperationalTransform";
-
-function syncTimeout(time){
+import {
+  comparison,
+  adjustForQuill,
+  reviseHistory,
+} from "../OperationalTransform/OperationalTransform";
+import QuillCursors from "quill-cursors";
+Quill.register("modules/cursors", QuillCursors);
+function syncTimeout(time) {
   const beg = Date.now();
-  while(Date.now()-beg<time){
+  while (Date.now() - beg < time) {
     //do nothing
   }
 }
@@ -20,10 +25,11 @@ export const Document = () => {
   // const [ prevTransform, setPrevTransform ] = useState("BEG");
   const documentId = searchParams.get("id");
   const [quill, setQuill] = useState();
-  const [ err, setErr ] = useState({
-    error:"",
-    resolution:""
+  const [err, setErr] = useState({
+    error: "",
+    resolution: "",
   });
+  const [cursor, setCursor] = useState();
   const socket = useContext(SocketClient);
   const prevTransformationList = useRef([]);
   const version = useRef(0);
@@ -33,23 +39,26 @@ export const Document = () => {
 
   const print = (str) => {
     console.log(str);
-  }
+  };
 
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
     console.log("list", prevTransformationList.current);
-    const transformsToPerform = comparison(prevTransformationList.current, delta , print);
-    if(transformsToPerform.length>0){
-      for(const op in transformsToPerform){
+    const transformsToPerform = comparison(
+      prevTransformationList.current,
+      delta,
+      print
+    );
+    if (transformsToPerform.length > 0) {
+      for (const op in transformsToPerform) {
         console.log(`New:`, op);
       }
-    }
-    else{
-      console.log(`New: `,transformsToPerform);
+    } else {
+      console.log(`New: `, transformsToPerform);
     }
 
     // console.log(`NEW: ${JSON.stringify(transformsToPerform)}, OLD: ${JSON.stringify(delta)}`);
-    if("ops" in transformsToPerform.operation){
+    if ("ops" in transformsToPerform.operation) {
       // if("retain" in transformsToPerform.operation.ops[0]){
       //   const content = quill.getContents() ?? "";
       //   const minLength = transformsToPerform.operation.ops[0].retain < content.length() ? transformsToPerform.operation.ops[0].retain : transformsToPerform.operation.ops[0].retain-1;
@@ -64,28 +73,31 @@ export const Document = () => {
       //   });
       // }else{
       // }
-      
+
       // const [removals,additions, ver] = reviseHistory(prevTransformationList.current, transformsToPerform.operation);
-      
+
       // for(const remove of removals){
-        
+
       // }
       // for(const add of additions){
       //   quill.updateContents(adjustForQuill(add.operation));
       // }
-      console.log("transformsToPerform.operation",transformsToPerform.operation);
+      console.log(
+        "transformsToPerform.operation",
+        transformsToPerform.operation
+      );
       quill.updateContents(adjustForQuill(transformsToPerform.operation));
       prevTransformationList.current.push({
-        operation:transformsToPerform.operation,
-        version:prevTransformationList.current.length+1,
+        operation: transformsToPerform.operation,
+        version: prevTransformationList.current.length + 1,
         userId: delta.userId,
         uId: delta.uId,
-        prevVersion:delta.version,
-        deltaId:delta.deltaId,
-        og:delta.operation
+        prevVersion: delta.version,
+        deltaId: delta.deltaId,
+        og: delta.operation,
       });
-    }else{
-      transformsToPerform.operation.forEach((newOp)=>{
+    } else {
+      transformsToPerform.operation.forEach((newOp) => {
         // if("retain" in newOp.ops[0]){
         //   const content = quill.getContents() ?? "";
         //   const minLength = newOp.ops[0].retain < content.length() ? newOp.ops[0].retain : newOp.ops[0].retain-1;
@@ -102,17 +114,22 @@ export const Document = () => {
         console.log("newOps", newOp.ops);
         quill.updateContents(adjustForQuill(newOp));
         prevTransformationList.current.push({
-          operation:newOp,
-          version:prevTransformationList.current.length+1,
+          operation: newOp,
+          version: prevTransformationList.current.length + 1,
           userId: delta.userId,
-          uId:delta.uId,
-          prevVersion:delta.version,
-          deltaId:delta.deltaId,
-          og:delta.operation
+          uId: delta.uId,
+          prevVersion: delta.version,
+          deltaId: delta.deltaId,
+          og: delta.operation,
         });
       });
     }
-    version.current = prevTransformationList.current.length>0 ? prevTransformationList.current[prevTransformationList.current.length-1].version : 0;
+    version.current =
+      prevTransformationList.current.length > 0
+        ? prevTransformationList.current[
+            prevTransformationList.current.length - 1
+          ].version
+        : 0;
     console.log("recieved version", version.current);
     // const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
     // newReceivedTransforms.forEach((newReceivedTransform)=>{
@@ -140,17 +157,17 @@ export const Document = () => {
     console.log("rejoining doc...");
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: uuid(),
     });
   };
 
   const handleErrorMessage = (message) => {
-    const { err:errorMessage, resolution } = message;
+    const { err: errorMessage, resolution } = message;
     setErr({
-      error:errorMessage,
-      resolution:resolution
+      error: errorMessage,
+      resolution: resolution,
     });
-  }
+  };
 
   useEffect(() => {
     console.log("something changes");
@@ -164,25 +181,39 @@ export const Document = () => {
   }, [socket, quill]);
 
   useEffect(() => {
-    
     socket.socket.emit("join-document", {
       documentId: documentId,
-      userId: uuid()
+      userId: uuid(),
     });
   }, [socket]);
 
+  function updateCursor(range) {
+    setTimeout(() => cursors.moveCursor("cursor", range), 1);
+  }
+
   useEffect(() => {
-    if (quill == null || socket.socket == null || documentId == null) return;
+    if (
+      quill == null ||
+      socket.socket == null ||
+      documentId == null ||
+      cursor == null
+    )
+      return;
+    quill.on("selection-change", function (range, oldRange, source) {
+      if (source === "user") {
+        setTimeout(() => cursor.moveCursor("cursor", range), 1);
+      }
+    });
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
-        console.log("DELTA",delta);
+        console.log("DELTA", delta);
         const quillContent = quill.getContents();
         console.log("quillContent", quillContent);
         prevTransformationList.current.push({
-          operation:delta,
-          version:version.current+1,
+          operation: delta,
+          version: version.current + 1,
           userId: userId.current,
-          uId: uId.current
+          uId: uId.current,
         });
         // syncTimeout(2000);
         const ver = version.current;
@@ -195,14 +226,14 @@ export const Document = () => {
           delta: delta,
           content: quillContent,
           userId: userId.current,
-          version:ver+1,
+          version: ver + 1,
           uId: uId.current,
-          prevDelta:sendList.current[sendList.current.length-1],
-          deltaId:deltaId
+          prevDelta: sendList.current[sendList.current.length - 1],
+          deltaId: deltaId,
         });
         sendList.current.push({
-          deltaId:deltaId,
-          delta:delta
+          deltaId: deltaId,
+          delta: delta,
         });
 
         version.current++;
@@ -210,7 +241,7 @@ export const Document = () => {
         // setPrevTransform(ot.ensureStructure(delta));
       }
     });
-  }, [socket, quill]);
+  }, [socket, quill, cursor]);
 
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
@@ -220,16 +251,25 @@ export const Document = () => {
     const q = new Quill(editor, {
       modules: {
         toolbar: [[{ header: [1, 2, false] }], ["bold", "italic", "underline"]],
+        cursors: {
+          transformOnTextChange: true,
+        },
       },
       theme: "snow", // or 'bubble'
     });
+    let c = q.getModule("cursors");
+    c.createCursor("cursor", "You", "blue");
     setQuill(q);
+    setCursor(c);
   }, []);
 
   if (!documentId) return <h1>No such document exists</h1>;
-  if (err.error) return <div>
-    <h1>Error: {err.error}</h1>
-    <h1>Resolution: {err.resolution}</h1>
-  </div>
+  if (err.error)
+    return (
+      <div>
+        <h1>Error: {err.error}</h1>
+        <h1>Resolution: {err.resolution}</h1>
+      </div>
+    );
   return <div className="document" ref={wrapperRef}></div>;
 };
