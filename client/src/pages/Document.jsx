@@ -187,10 +187,6 @@ export const Document = () => {
     });
   }, [socket]);
 
-  function updateCursor(range) {
-    setTimeout(() => cursors.moveCursor("cursor", range), 1);
-  }
-
   useEffect(() => {
     if (
       quill == null ||
