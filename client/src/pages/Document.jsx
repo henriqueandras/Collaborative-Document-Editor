@@ -10,26 +10,30 @@ import {
   adjustForQuill,
   reviseHistory,
 } from "../OperationalTransform/OperationalTransform";
+
+// QuillCursors library for adding cursors to the document so users can see each other's cursor (Work-In-Progress Feature)
 import QuillCursors from "quill-cursors";
 Quill.register("modules/cursors", QuillCursors);
-function syncTimeout(time) {
-  const beg = Date.now();
-  while (Date.now() - beg < time) {
-    //do nothing
-  }
-}
 
+/*
+* Some commonly seen functions in this file include socket.on and socket.emit
+* These are part of the networking library used and help the client communicate with the proxy and server
+* socket.on is for listening to updates asynchronously from the proxy
+* socket.emit is for sending updates asynchronously to the proxy
+*/
 export const Document = () => {
-  // const defaultTransform = {ops:[{retain:0},{insert:''}]};
-  const [searchParams] = useSearchParams();
-  // const [ prevTransform, setPrevTransform ] = useState("BEG");
-  const documentId = searchParams.get("id");
-  const [quill, setQuill] = useState();
+  /*
+  * Various parameters needed to maintain frontend health
+  * UseState from React is used to check if parameters have been initialized or not
+  */
+  const [searchParams] = useSearchParams(); 
+  const documentId = searchParams.get("id"); 
+  const [quill, setQuill] = useState(); 
   const [err, setErr] = useState({
     error: "",
     resolution: "",
   });
-  const [cursor, setCursor] = useState();
+  const [cursor, setCursor] = useState(); 
   const socket = useContext(SocketClient);
   const prevTransformationList = useRef([]);
   const version = useRef(0);
@@ -37,10 +41,17 @@ export const Document = () => {
   const uId = useRef(0);
   const sendList = useRef([]);
 
+  /*
+  * used for debugging purposes
+  */
   const print = (str) => {
     console.log(str);
   };
 
+  /*
+  * handlerUpdateContent is a function that is called anytime the client receives new updates from the proxy. 
+  * the function calls inside it are calling operational transformation functions for client-side consistency
+  */
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
     console.log("list", prevTransformationList.current);
@@ -57,31 +68,7 @@ export const Document = () => {
       console.log(`New: `, transformsToPerform);
     }
 
-    // console.log(`NEW: ${JSON.stringify(transformsToPerform)}, OLD: ${JSON.stringify(delta)}`);
     if ("ops" in transformsToPerform.operation) {
-      // if("retain" in transformsToPerform.operation.ops[0]){
-      //   const content = quill.getContents() ?? "";
-      //   const minLength = transformsToPerform.operation.ops[0].retain < content.length() ? transformsToPerform.operation.ops[0].retain : transformsToPerform.operation.ops[0].retain-1;
-      //   const revisedOp = {ops:[{retain:minLength},transformsToPerform.operation.ops[1]]};
-      //   console.log("minLength",content.length(), transformsToPerform.operation.ops[0].retain);
-
-      //   quill.updateContents(revisedOp);
-      //   prevTransformationList.current.push({
-      //     operation:revisedOp,
-      //     version:transformsToPerform.version,
-      //     userId: delta.userId
-      //   });
-      // }else{
-      // }
-
-      // const [removals,additions, ver] = reviseHistory(prevTransformationList.current, transformsToPerform.operation);
-
-      // for(const remove of removals){
-
-      // }
-      // for(const add of additions){
-      //   quill.updateContents(adjustForQuill(add.operation));
-      // }
       console.log(
         "transformsToPerform.operation",
         transformsToPerform.operation
@@ -98,19 +85,6 @@ export const Document = () => {
       });
     } else {
       transformsToPerform.operation.forEach((newOp) => {
-        // if("retain" in newOp.ops[0]){
-        //   const content = quill.getContents() ?? "";
-        //   const minLength = newOp.ops[0].retain < content.length() ? newOp.ops[0].retain : newOp.ops[0].retain-1;
-        //   const revisedOp = {ops:[{retain:minLength},newOp.ops[1]]};
-        //   console.log("minLength",content.length(), newOp.ops[0].retain);
-        //   quill.updateContents(revisedOp);
-        //   prevTransformationList.current.push({
-        //     operation:revisedOp,
-        //     version:transformsToPerform.version,
-        //     userId: delta.userId
-        //   });
-        // }else{
-        // }
         console.log("newOps", newOp.ops);
         quill.updateContents(adjustForQuill(newOp));
         prevTransformationList.current.push({
@@ -131,28 +105,22 @@ export const Document = () => {
           ].version
         : 0;
     console.log("recieved version", version.current);
-    // const [newReceivedTransforms,prev] = ot.handleTransforms(prevTransform, delta);
-    // newReceivedTransforms.forEach((newReceivedTransform)=>{
-    //   console.log("Applying:", newReceivedTransform.ops);
-    //   if("retain" in newReceivedTransform.ops[0]){
-    //     const length = quill.getContents()?.ops[0]?.insert?.length || 1;
-    //     newReceivedTransform.ops[0].retain = Math.min(newReceivedTransform.ops[0].retain, length-1);
-    //   }
-    //   quill.updateContents(newReceivedTransform.ops);
-    // });
-    // const arr = prevTransform === "BEG" ? [] : prevTransform;
-    // setPrevTransform([...arr, prev]);
   };
 
+  /*
+  * When an existing document is opened, we want to set the content of the text editor to 
+  * the existing document's text data
+  */
   const handlerSetContent = (data) => {
     console.log(data);
-    // setUserId(data.userId);
-    // userId.current = data.userId;
     version.current = data.version;
     quill.setContents(data.delta);
     uId.current = data.userId;
   };
 
+  /*
+  * Tell the proxy that you would like to rejoin the document
+  */
   const handlerRejoinDoc = (msg) => {
     console.log("rejoining doc...");
     socket.socket.emit("join-document", {
@@ -169,6 +137,10 @@ export const Document = () => {
     });
   };
 
+  /*
+  * Listen for various updates from proxy and call the 
+  * Appropriate handler
+  */
   useEffect(() => {
     console.log("something changes");
     if (socket.socket == null || quill == null) return;
@@ -180,6 +152,9 @@ export const Document = () => {
     socket.socket.on("error_message", handleErrorMessage);
   }, [socket, quill]);
 
+  /*
+  * Let proxy know that you would like to access the document with the specific document id.
+  */
   useEffect(() => {
     socket.socket.emit("join-document", {
       documentId: documentId,
@@ -188,6 +163,11 @@ export const Document = () => {
   }, [socket]);
 
   useEffect(() => {
+    /*
+    * We need to check when quill or documentIds are null otherwise react
+    * will give errors and try to use these variables on re-renders when they are not
+    * yet set.
+    */
     if (
       quill == null ||
       socket.socket == null ||
@@ -200,6 +180,10 @@ export const Document = () => {
         setTimeout(() => cursor.moveCursor("cursor", range), 1);
       }
     });
+    /*
+    * If receiving a text-change update, check the version of the updates with the current version
+    * and apply the necessary updates and deltas using operational transform and quill to correctly update the client
+    */
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log("DELTA", delta);
@@ -211,11 +195,7 @@ export const Document = () => {
           userId: userId.current,
           uId: uId.current,
         });
-        // syncTimeout(2000);
         const ver = version.current;
-        // setTimeout(()=>{
-        //   console.log("version:",ver);
-        // },2000);
         const deltaId = uuid();
         socket.socket.emit("updates", {
           documentId: documentId,
@@ -234,11 +214,14 @@ export const Document = () => {
 
         version.current++;
         console.log("Current version", version.current);
-        // setPrevTransform(ot.ensureStructure(delta));
       }
     });
   }, [socket, quill, cursor]);
 
+  /*
+  * This is just creating the text editor and the cursor objects
+  * The text editor is fairly basic, only bold, italic, and underlines are used
+  */
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
     wrapper.innerHTML = "";

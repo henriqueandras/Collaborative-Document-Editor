@@ -4,6 +4,8 @@ import { Document } from "./pages/Document";
 import SocketClientContext from "./SocketClientContext";
 import ListDocuments from "./pages/ListDocuments";
 
+// Set up Frontend for the Application using React
+// Important stuff is in Document.jsx
 function App() {
   return (
     <SocketClientContext>
