@@ -77,6 +77,9 @@ listOfEndpoints.forEach((serverEndpoint) => {
   if (!serverEndpoint.includes(String(endpointPORT))) {
     const socketServer = ioClient(serverEndpoint);
     // createSocketListeners(socketServer);
+
+    synchronizer.setupPrimarySocketForSync(socketServer, Document);
+
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
       sockId: socketServer.id,
@@ -118,7 +121,7 @@ function createSocketListeners(io) {
     });
 
     // Set up socket for synchronization
-    synchronizer.setupSocketForSync(socket, Document);
+    synchronizer.setupBackupSocketForSync(socket, Document);
 
     socket.on("bully-message", (message) => {
       bullyReceived = true;
@@ -258,6 +261,13 @@ function createSocketListeners(io) {
     socket.on("join-document", async (message) => {
       const { documentId, sId, userId } = message;
       console.log("JOIN DOCUMENT", message);
+
+      if(documentId == 0)
+      {
+        console.log("Invalid Doc ID: ", documentId);
+        return;
+      }
+
       const document = await Document.findById(documentId);
       console.log("document", document);
       if(document){
