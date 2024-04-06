@@ -1,4 +1,4 @@
-    
+    //Utility function that mimics applying transformations used for testing purposes
     function apply(operation){
         const action = this.getAction(operation);
         const retain = operation.ops[0].retain;
@@ -22,7 +22,7 @@
 /**delta {"ops":[{"retain":16},{"insert":"d"}]} */
 /**delta {"ops":[{"retain":16},{"delete":2}]} */
 
-
+// Get the action either inserting data or deleting data from the operation
 function getAction(data){
         //Action is either "insert" or "delete"
         const actionEl = data.ops[1];
@@ -35,7 +35,7 @@ function getAction(data){
             return "insert";
         }
     }
-
+    // Transform if the old operation retain position is less than the new operation retain positin
     function transformLessThan(old, newData){
         const oldAction = getAction(old);
         const newDataAction = getAction(newData);
@@ -82,7 +82,7 @@ function getAction(data){
         return [[newData], newData];
     }
     
-
+    // Transform if the new operation retain position is after/greater than the old operation retain position
     function transformGreaterThan(old, newData){
         const oldAction = getAction(old);
         const newDataAction = getAction(newData);
@@ -125,7 +125,7 @@ function getAction(data){
         }
     }
 
-
+    //If the trying to operate such that both have the same retain position, then compare based on the type of operation
     function transformEqual(old, newData, oldId, newId){
         const oldAction = getAction(old);
         const newDataAction = getAction(newData);
@@ -159,7 +159,7 @@ function getAction(data){
             }
         }
     }
-    
+    //The actual transform operation that will compare based on the 2 retain position
     function transformOperations(old, newData, oldId, newId){
         if(old === "BEG"){
             return [[newData], newData];
@@ -176,27 +176,18 @@ function getAction(data){
             return transformEqual(old, newData, oldId, newId);
         }
     }
-
+    ///Handle the actual "atomic" transformation
     function handleTransforms(old, newData,print, oldId, newId){
         console.log("HANDLE transforms");
         print(`prev: ${JSON.stringify(old)}, curr: ${newData}`);
         if(old === "BEG"){
             return [[newData], newData];
         }
-        // const ops = [];
-        // for(const o of old){
-        //     const trans = this.transformOperations(o, newData);
-        //     if(trans[0] == []){
-        //         return [];
-        //     }else{
-        //         ops.push(trans[0]);
-        //     }
-        // }
         const trans = transformOperations(ensureStructure(old), ensureStructure(newData), oldId, newId);
         print(`trans: ${JSON.stringify(trans)}`);
         return trans;
     }
-
+    //Ensure structure so that the retain and insert/delete values exist or create them
     function ensureStructure(data){
         if("ops" in data){
             if(data.ops.length === 2){
@@ -213,6 +204,7 @@ function getAction(data){
         }
     }
 
+//If the delete or insert op occurs at the first position transform so Quill can understand it better
 export function adjustForQuill(data){
     if("ops" in data){
         if(data.ops.length === 2){
@@ -228,18 +220,23 @@ export function adjustForQuill(data){
     }
 }
 
+//If the client is same then need to compare the old operation and how it was transformed to ensure that the current operation is handled correctly  
 function isFromOwnClient(old, currentOp, currentOpOg){
     if(!old.deltaId || !currentOp.prevDelta){
         return false;
     }
+    // Check if the previous delta for the current operation is the same as the old delta and retain position of old is before the current then need to apply transformation.
     if(((currentOp.prevDelta.deltaId===old.deltaId && old.userId===currentOp.userId)&&(ensureStructure(currentOp.prevDelta.delta).ops[0].retain<=ensureStructure(currentOpOg.operation).ops[0].retain) && ((ensureStructure(currentOp.operation).ops[0].retain<=ensureStructure(old.operation).ops[0].retain)))||(old.userId===currentOp.userId && (ensureStructure(old.og).ops[0].retain<ensureStructure(currentOpOg.operation).ops[0].retain && (ensureStructure(currentOp.operation).ops[0].retain<=ensureStructure(old.operation).ops[0].retain)))){
         return true;
     }
     return false;
 }
 
+/**Comparison between history of old operations and the current operation that is received from another user */
 export function comparison(listOfOldOps, currentOp, print){
+    //Get the operation from the currentOp passed in
     let newOp = currentOp.operation;
+    //Make a deep copy of the object
     const currentOpOg = JSON.parse(JSON.stringify(currentOp));
     if(listOfOldOps.length===0){
         return {
@@ -249,17 +246,18 @@ export function comparison(listOfOldOps, currentOp, print){
     }
 
     print(`Comp: ${JSON.stringify(listOfOldOps)} - ${JSON.stringify(currentOp)}`);
-
+    //Iterate the list of old operations that were applied and compare with currentOp
     for(let i=0;i<listOfOldOps.length;i++){
         const old = listOfOldOps[i];
         print(`Old: ${JSON.stringify(old)}, New: ${JSON.stringify(currentOp)}`);
+        //Check if the currentOp version is less than or equal to each old op and that the client is different, or if it is from same client call isFromOwnClient check
         if((currentOp.version<=old.version && (old.userId !== currentOp.userId ))||(isFromOwnClient(old, currentOp, currentOpOg))){
+            //call handleTransforms function to handle transforming the current op based on the previous ops
             if(!("ops" in newOp)){
                 if(newOp.length===1){
                     const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print, old.userId, currentOp.userId);
                     newOp = JSON.parse(JSON.stringify(newAlteredOp));
                 }else{
-                    //TODO for deletion multiple ops created figure out how to handle
                     const [newAlteredOp,prev] = handleTransforms(old.operation, newOp[0], print, old.userId, currentOp.userId);
                     
                     const [newAlteredOp2,prev2] = handleTransforms(old.operation, newOp[1], print, old.userId, currentOp.userId);
@@ -273,12 +271,14 @@ export function comparison(listOfOldOps, currentOp, print){
             }
         }
     }
+    //Return the final operation of the current op after augmenting it
     return {
         operation:newOp,
         version:listOfOldOps.length>0 ? listOfOldOps[listOfOldOps.length-1].version+1 :currentOp.version+1  
     };
 }
 
+//Revise history function that was never used (intended to change the old ops list to "revise" the history of the operations correctly)
 export function reviseHistory(listOfOldOps, currentOp){
     const op = currentOp.operation.ops[0];
     if(!("retain" in op)){
@@ -299,6 +299,7 @@ export function reviseHistory(listOfOldOps, currentOp){
     return [removeOp, addOp,version];
 }
 /*
+BELOW ARE SOME NOTES ABOUT HOW THE TRANSFORMATION SHOULD WORK 
 old = retain 3 insert 'm'
 current = retain:4 delete 1
 
