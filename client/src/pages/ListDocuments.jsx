@@ -1,4 +1,4 @@
-import { Button } from "@mui/base";
+import Button from "@mui/material/Button";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { SocketClient } from "../SocketClientContext";
@@ -30,23 +30,47 @@ export default function ListDocuments() {
   }, []);
 
   return (
-    <div>
-      {list?.map((li, i) => {
-        return (
-          <div key={i}>
-            <Button
-              onClick={() => {
-                socket.socket.emit("join-document", {
-                  documentId: li,
-                });
-                navigate(`/document?id=${li}`);
-              }}
-            >
-              {li}
-            </Button>
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <h2
+        style={{
+          display: "block",
+          margin: "auto",
+          marginTop: "25px",
+          textAlign: "center",
+          fontFamily: "sans-serif",
+          fontWeight: "lighter",
+          fontSize: "32px",
+          color: "darkslategray",
+        }}
+      >
+        All Documents
+      </h2>
+      <div id="button-list">
+        {list?.map((li, i) => {
+          return (
+            <div key={i}>
+              <Button
+                variant="outlined"
+                style={{
+                  display: "block",
+                  margin: "auto",
+                  marginTop: "10px",
+                  width: "20vw",
+                  padding: "12.5px",
+                }}
+                onClick={() => {
+                  socket.socket.emit("join-document", {
+                    documentId: li,
+                  });
+                  navigate(`/document?id=${li}`);
+                }}
+              >
+                {li}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
