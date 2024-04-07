@@ -34,8 +34,15 @@ const listOfEndpoints = [
   "http://localhost:3001",
 ];
 
-// Select the first endpoint as the current server to connect to
-let SERVER_ENDPOINT = listOfEndpoints.shift();
+function get_next_endpoint(){
+  const next = listOfEndpoints.shift();
+  listOfEndpoints.push(next);
+
+  return next;
+}
+
+let SERVER_ENDPOINT = get_next_endpoint();
+
 let server_socket = io(SERVER_ENDPOINT);
 
 // Function to setup connection with the server
@@ -59,6 +66,7 @@ function setupProxyServerConnection(server_socket){
       // Recursively setup connection to the new leader
       setupProxyServerConnection(server_socket);
       server_socket.on("connect_error", () => {
+        console.log("connect error to ", SERVER_ENDPOINT);
         server_socket.close();
         onConnectError(true);
       });
@@ -133,7 +141,7 @@ setupProxyServerConnection(server_socket);
 function onConnectError(shouldInitiateElection) {
   // Close the current connection and shift to the next server endpoint
   server_socket.close();
-  SERVER_ENDPOINT = listOfEndpoints.shift();
+  SERVER_ENDPOINT = get_next_endpoint();
   server_socket = io(SERVER_ENDPOINT);
 
   // Initiate leader election
@@ -146,12 +154,14 @@ function onConnectError(shouldInitiateElection) {
   // Recursively setup the new connection
   setupProxyServerConnection(server_socket);
   server_socket.on("connect_error", () => {
+    console.log("connect error to ", SERVER_ENDPOINT);
     onConnectError(true);
   });
 }
 
 // Initial connection error handling setup
 server_socket.on("connect_error", () => {
+  console.log("connect error to ", SERVER_ENDPOINT);
   onConnectError(true);
 });
 
