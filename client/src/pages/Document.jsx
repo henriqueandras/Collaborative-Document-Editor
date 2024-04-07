@@ -15,46 +15,68 @@ import {
 import QuillCursors from "quill-cursors";
 Quill.register("modules/cursors", QuillCursors);
 
+// Helper function to check if an item exists in a JavaScript Array
+function isInArray(value, array) {
+  return array.indexOf(value) > -1;
+}
+// Custom Class so that we can use the Cursor Move function without relying on getting a Range object
+class Range {
+  constructor(index, length) {
+    this.index = index;
+    this.length = length;
+  }
+}
+
 /*
-* Some commonly seen functions in this file include socket.on and socket.emit
-* These are part of the networking library used and help the client communicate with the proxy and server
-* socket.on is for listening to updates asynchronously from the proxy
-* socket.emit is for sending updates asynchronously to the proxy
-*/
+ * Some commonly seen functions in this file include socket.on and socket.emit
+ * These are part of the networking library used and help the client communicate with the proxy and server
+ * socket.on is for listening to updates asynchronously from the proxy
+ * socket.emit is for sending updates asynchronously to the proxy
+ */
 export const Document = () => {
   /*
-  * Various parameters needed to maintain frontend health
-  * UseState from React is used to check if parameters have been initialized or not
-  */
-  const [searchParams] = useSearchParams(); 
-  const documentId = searchParams.get("id"); 
-  const [quill, setQuill] = useState(); 
+   * Various parameters needed to maintain frontend health
+   * UseState from React is used to check if parameters have been initialized or not
+   */
+  const [searchParams] = useSearchParams();
+  const documentId = searchParams.get("id");
+  const [quill, setQuill] = useState();
   const [err, setErr] = useState({
     error: "",
     resolution: "",
   });
-  const [cursor, setCursor] = useState(); 
+  const [cursor, setCursor] = useState();
   const socket = useContext(SocketClient);
   const prevTransformationList = useRef([]);
   const version = useRef(0);
   const userId = useRef(uuid());
   const uId = useRef(0);
   const sendList = useRef([]);
-
+  let cursorIds = [];
+  let cursors = [];
   /*
-  * used for debugging purposes
-  */
+   * used for debugging purposes
+   */
   const print = (str) => {
     console.log(str);
   };
 
   /*
-  * handlerUpdateContent is a function that is called anytime the client receives new updates from the proxy. 
-  * the function calls inside it are calling operational transformation functions for client-side consistency
-  */
+   * handlerUpdateContent is a function that is called anytime the client receives new updates from the proxy.
+   * the function calls inside it are calling operational transformation functions for client-side consistency
+   */
   const handlerUpdateContent = (delta) => {
     console.log("recieved:", delta);
     console.log("list", prevTransformationList.current);
+    console.log("user id: ", delta.uId);
+    console.log("cursorIds: ", cursorIds);
+    console.log("cursors : ", cursors);
+    if (!isInArray(delta.uId, cursorIds)) {
+      cursorIds.push(delta.uId);
+      let c = quill.getModule("cursors");
+      c.createCursor(`cursor${delta.uId}`, `Other User ${delta.uId}`, "red");
+      cursors.push(c);
+    }
     const transformsToPerform = comparison(
       prevTransformationList.current,
       delta,
@@ -104,13 +126,31 @@ export const Document = () => {
             prevTransformationList.current.length - 1
           ].version
         : 0;
+
+    // Update cursors based on "Retain" from operational transformation. This makes use of existing information we have
+    // It does not reflect other clients actual cursor selections, but rather wherever they recently edited.
     console.log("recieved version", version.current);
+    if (delta.operation.ops !== null) {
+      console.log("retain: ", delta.operation.ops[0].retain);
+      for (let i = 0; i <= cursors.length; i++) {
+        console.log("Test: ", delta.operation.ops);
+        console.log("Cursors!!", cursors);
+        if (cursorIds[i] === delta.uId) {
+          console.log("Moving cursor: ", cursors[i]);
+          let cursorName = `cursor${delta.uId}`;
+          cursors[i].moveCursor(
+            cursorName,
+            new Range(delta.operation.ops[0].retain, 0)
+          );
+        }
+      }
+    }
   };
 
   /*
-  * When an existing document is opened, we want to set the content of the text editor to 
-  * the existing document's text data
-  */
+   * When an existing document is opened, we want to set the content of the text editor to
+   * the existing document's text data
+   */
   const handlerSetContent = (data) => {
     console.log(data);
     version.current = data.version;
@@ -119,8 +159,8 @@ export const Document = () => {
   };
 
   /*
-  * Tell the proxy that you would like to rejoin the document
-  */
+   * Tell the proxy that you would like to rejoin the document
+   */
   const handlerRejoinDoc = (msg) => {
     console.log("rejoining doc...");
     socket.socket.emit("join-document", {
@@ -138,9 +178,9 @@ export const Document = () => {
   };
 
   /*
-  * Listen for various updates from proxy and call the 
-  * Appropriate handler
-  */
+   * Listen for various updates from proxy and call the
+   * Appropriate handler
+   */
   useEffect(() => {
     console.log("something changes");
     if (socket.socket == null || quill == null) return;
@@ -153,8 +193,8 @@ export const Document = () => {
   }, [socket, quill]);
 
   /*
-  * Let proxy know that you would like to access the document with the specific document id.
-  */
+   * Let proxy know that you would like to access the document with the specific document id.
+   */
   useEffect(() => {
     socket.socket.emit("join-document", {
       documentId: documentId,
@@ -164,10 +204,10 @@ export const Document = () => {
 
   useEffect(() => {
     /*
-    * We need to check when quill or documentIds are null otherwise react
-    * will give errors and try to use these variables on re-renders when they are not
-    * yet set.
-    */
+     * We need to check when quill or documentIds are null otherwise react
+     * will give errors and try to use these variables on re-renders when they are not
+     * yet set.
+     */
     if (
       quill == null ||
       socket.socket == null ||
@@ -177,13 +217,13 @@ export const Document = () => {
       return;
     quill.on("selection-change", function (range, oldRange, source) {
       if (source === "user") {
-        setTimeout(() => cursor.moveCursor("cursor", range), 1);
+        cursor.moveCursor("cursor", range);
       }
     });
     /*
-    * If receiving a text-change update, check the version of the updates with the current version
-    * and apply the necessary updates and deltas using operational transform and quill to correctly update the client
-    */
+     * If receiving a text-change update, check the version of the updates with the current version
+     * and apply the necessary updates and deltas using operational transform and quill to correctly update the client
+     */
     quill.on("text-change", function (delta, oldDelta, source) {
       if (source == "user") {
         console.log("DELTA", delta);
@@ -219,9 +259,9 @@ export const Document = () => {
   }, [socket, quill, cursor]);
 
   /*
-  * This is just creating the text editor and the cursor objects
-  * The text editor is fairly basic, only bold, italic, and underlines are used
-  */
+   * This is just creating the text editor and the cursor objects
+   * The text editor is fairly basic, only bold, italic, and underlines are used
+   */
   const wrapperRef = useCallback((wrapper) => {
     if (wrapper == null) return;
     wrapper.innerHTML = "";
