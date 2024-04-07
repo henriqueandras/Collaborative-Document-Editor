@@ -30,7 +30,14 @@ const listOfEndpoints = [
   "http://localhost:3001",
 ];
 
-let SERVER_ENDPOINT = listOfEndpoints.shift();
+function get_next_endpoint(){
+  const next = listOfEndpoints.shift();
+  listOfEndpoints.push(next);
+
+  return next;
+}
+
+let SERVER_ENDPOINT = get_next_endpoint();
 
 let server_socket = io(SERVER_ENDPOINT);
 
@@ -49,6 +56,7 @@ function setupProxyServerConnection(server_socket){
       console.log("NEW LEADER: ", endpoint);
       setupProxyServerConnection(server_socket);
       server_socket.on("connect_error", () => {
+        console.log("connect error to ", SERVER_ENDPOINT);
         server_socket.close();
         onConnectError(true);
       });
@@ -102,7 +110,7 @@ setupProxyServerConnection(server_socket);
 
 function onConnectError(shouldInitiateElection) {
   server_socket.close();
-  SERVER_ENDPOINT = listOfEndpoints.shift();
+  SERVER_ENDPOINT = get_next_endpoint();
   server_socket = io(SERVER_ENDPOINT);
   if(shouldInitiateElection){
     server_socket.emit("initiate-election",{
@@ -111,11 +119,13 @@ function onConnectError(shouldInitiateElection) {
   }
   setupProxyServerConnection(server_socket);
   server_socket.on("connect_error", () => {
+    console.log("connect error to ", SERVER_ENDPOINT);
     onConnectError(true);
   });
 }
 
 server_socket.on("connect_error", () => {
+  console.log("connect error to ", SERVER_ENDPOINT);
   onConnectError(true);
 });
 
