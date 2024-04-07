@@ -10,6 +10,7 @@ import {
   adjustForQuill,
   reviseHistory,
 } from "../OperationalTransform/OperationalTransform";
+import Alert from '@mui/material/Alert';
 
 // QuillCursors library for adding cursors to the document so users can see each other's cursor (Work-In-Progress Feature)
 import QuillCursors from "quill-cursors";
@@ -171,6 +172,7 @@ export const Document = () => {
 
   const handleErrorMessage = (message) => {
     const { err: errorMessage, resolution } = message;
+    console.log(message);
     setErr({
       error: errorMessage,
       resolution: resolution,
@@ -283,11 +285,10 @@ export const Document = () => {
   }, []);
 
   if (!documentId) return <h1>No such document exists</h1>;
-  if (err.error)
+  if (err.error && err.resolution !== "RESOLVED")
     return (
       <div>
-        <h1>Error: {err.error}</h1>
-        <h1>Resolution: {err.resolution}</h1>
+        <Alert severity="warning">{err.error}</Alert>
       </div>
     );
   return <div className="document" ref={wrapperRef}></div>;

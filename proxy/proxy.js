@@ -54,6 +54,14 @@ function setupProxyServerConnection(server_socket){
     // Handle leader election event
     server_socket.on("leader-elected", (message) => {
       // Close current connection and connect to the new leader server
+      ioserver.fetchSockets().then((sockets)=>{
+        for(const sock of sockets){
+          sock.emit("error_message",{
+            resolution:"RESOLVED"
+          });
+        }
+      });
+
       server_socket.close();
       const { endpoint } = message;
       if(SERVER_ENDPOINT!==endpoint){
@@ -146,6 +154,13 @@ function onConnectError(shouldInitiateElection) {
 
   // Initiate leader election
   if(shouldInitiateElection){
+    ioserver.fetchSockets().then((sockets)=>{
+      for(const sock of sockets){
+        sock.emit("error_message",{
+          err:"Reconnecting please wait..."
+        });
+      }
+    });
     server_socket.emit("initiate-election",{
       id:-1
     });

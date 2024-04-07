@@ -60,10 +60,10 @@ const serverConnections = [];
 
 // List of other server endpoints to be used during leader election
 const listOfEndpoints = [
-  "http://localhost:3004",
-  "http://localhost:3003",
-  "http://localhost:3002",
   "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
 ];
 // Flag indicating if the server is currently running an election process
 let running = false;
