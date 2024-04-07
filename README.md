@@ -20,11 +20,13 @@ Repository for CPSC 559 Project - G15.
 
 ## Team Names
 
-Ana Clara Perrone - 30111664
-Angelo Gonzales - 30085865
-Dave Sharma - 30093981
-Henrique Andras - 30105778
-Mohamed Yassin - 30086575
+| Student Name      | UCID     |
+|-------------------|----------|
+| Ana Clara Perrone | 30111664 |
+| Angelo Gonzales   | 30085865 |
+| Dave Sharma       | 30093981 |
+| Henrique Andras   | 30105778 |
+| Mohamed Yassin    | 30086575 |
 
 ## Project Description
 
@@ -58,24 +60,30 @@ Our project culminated in the creation of a distributed collaborative document e
 ## Technologies Used
 
 #### Node.js
-- Servers and Proxies
-![Alt Text](/img/nodejs-logo.jpg)
+Servers and Proxies
+
+<img src="/img/nodejs-logo.jpg" alt="Alt Text" width="300" height="230">
 
 #### React
-- Client
-![Alt Text](/img/react-logo.png)
+Client
+
+<img src="/img/react-logo.png" alt="Alt Text" width="450" height="230">
 
 #### Quill
-- Rich text editor
-![Alt Text](/img/quill-logo.png)
+Rich text editor
+
+<img src="/img/quill-logo.png" alt="Alt Text" width="350" height="150">
+
 
 #### MongoDB
-- Database
-![Alt Text](/img/mongodb-logo.jpg)
+Database
+
+<img src="/img/mongodb-logo.jpg" alt="Alt Text" width="320" height="150">
 
 #### Docker
-- Containerizing servers and database
-![Alt Text](/img/docker-logo.png)
+Containerizing servers and database
+
+<img src="/img/docker-logo.png" alt="Alt Text" width="280" height="180">
 
 ## Setup
 
