@@ -9,34 +9,42 @@ export const MainMenu = () => {
   const socket = useContext(SocketClient);
 
   return (
-    <div>
-      <Button
-        style={{ display: "block", margin: "auto", width: "20vw" }}
-        variant="outlined"
-        onClick={async() => {
-          const documentId = uuid();
-          await socket.socket.emit("create-document", {
-            documentId: documentId,
-          });
-          navigate(`document?id=${documentId}`);
-        }}
-      >
-        Create Document
-      </Button>
-      <Button
-        style={{
-          display: "block",
-          margin: "auto",
-          marginTop: "5vh",
-          width: "20vw",
-        }}
-        variant="outlined"
-        onClick={() => {
-          navigate("list");
-        }}
-      >
-        Open Existing Document
-      </Button>
-    </div>
+    <>
+      <div id="main-menu-buttons">
+        <Button
+          style={{
+            display: "block",
+            margin: "auto",
+            width: "20vw",
+            height: "75px",
+          }}
+          variant="contained"
+          onClick={async () => {
+            const documentId = uuid();
+            await socket.socket.emit("create-document", {
+              documentId: documentId,
+            });
+            navigate(`document?id=${documentId}`);
+          }}
+        >
+          Create Document
+        </Button>
+        <Button
+          style={{
+            display: "block",
+            margin: "auto",
+            width: "20vw",
+            height: "75px",
+            marginTop: "20px",
+          }}
+          variant="outlined"
+          onClick={() => {
+            navigate("list");
+          }}
+        >
+          Open Existing Document
+        </Button>
+      </div>
+    </>
   );
 };

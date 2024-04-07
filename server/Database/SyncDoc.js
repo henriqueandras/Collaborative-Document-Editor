@@ -238,8 +238,8 @@ module.exports = {
             actualSocket.emit("sync-doc-create", {utype: UT_CREATE, id: args.id, data: args.data, index: index});
         }
 
-        await Document.create({ _id: args.id, data: args.data });
-    },
+    await Document.create({ _id: args.id, data: args.data });
+  },
 
     // Used by primary server to propagate update document update to backups.
     syncFindByIdAndUpdate: async (Document, args, serverSockets) => {
@@ -249,6 +249,6 @@ module.exports = {
             actualSocket.emit("sync-doc-find-update", {utype: UT_FIND_UPDATE, id: args.id, data: args.data, index: index});
         }
 
-        await Document.findByIdAndUpdate(args.id, { data: args.data });
-    }
+    await Document.findByIdAndUpdate(args.id, { data: args.data });
+  },
 };
