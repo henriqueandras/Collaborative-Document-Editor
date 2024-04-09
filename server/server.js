@@ -179,6 +179,11 @@ function createSocketListeners(io) {
      * The proxy initiates an election when the primary server disconnects
      */
     socket.on("initiate-election", (message) => {
+      if(running)
+      {
+        return;
+      }
+      
       leader = null;
       console.log("initiate-election called");
       if (message.id < endpointPORT) {
