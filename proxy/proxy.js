@@ -28,10 +28,9 @@ const ioserver = require("socket.io")(http, {
 
 // List of potential server endpoints to be used during leader election 
 const listOfEndpoints = [
-  "http://localhost:3004",
-  "http://localhost:3003",
-  "http://localhost:3002",
-  "http://localhost:3001",
+  "http://10.13.111.188:3001",
+  "http://10.13.68.132:3002",
+  "http://10.13.170.52:3003/",
 ];
 
 function get_next_endpoint(){

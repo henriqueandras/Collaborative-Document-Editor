@@ -49,7 +49,7 @@ if (!useLocalDb) {
 // Default document structure
 const defaultValue = { updates: [], text: [], version: 0 };
 
-const currentEndpoint = `http://localhost:${PORT}`;
+const currentEndpoint = `http://10.13.68.132:${PORT}`;
 // const currentEndpoint = 'ws://0.tcp.us-cal-1.ngrok.io:16707';
 const endpointPORT = currentEndpoint.split(":")[2];
 
@@ -60,10 +60,10 @@ const serverConnections = [];
 
 // List of other server endpoints to be used during leader election
 const listOfEndpoints = [
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "http://localhost:3003",
-  "http://localhost:3004",
+  "http://10.13.111.188:3001",
+  "http://10.13.68.132:3002",
+  "http://10.13.170.52:3003/",
+  // "http://localhost:3004",
 ];
 // Flag indicating if the server is currently running an election process
 let running = false;
@@ -96,6 +96,11 @@ listOfEndpoints.forEach((serverEndpoint) => {
     // createSocketListeners(socketServer);
 
     synchronizer.setupPrimarySocketForSync(socketServer, Document);
+
+    socketServer.on("bully-message", (message) => {
+      bullyReceived = true;
+      console.log("bully-received");
+    });
 
     otherServerSockets.push({
       serverEndpoint: serverEndpoint,
@@ -151,10 +156,10 @@ function createSocketListeners(io) {
     // Set up socket for synchronization
     synchronizer.setupBackupSocketForSync(socket, Document);
 
-    socket.on("bully-message", (message) => {
-      bullyReceived = true;
-      console.log("bully-received");
-    });
+    // socket.on("bully-message", (message) => {
+    //   bullyReceived = true;
+    //   console.log("bully-received");
+    // });
 
     /*
      * Check if a leader has been elected, if it has, then let each other server know who the leader is.
