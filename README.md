@@ -20,13 +20,13 @@ Repository for CPSC 559 Project - G15.
 
 ## Team Names
 
-| Student Name      | UCID     |
-|-------------------|----------|
-| Ana Clara Perrone | 30111664 |
-| Angelo Gonzales   | 30085865 |
-| Dave Sharma       | 30093981 |
-| Henrique Andras   | 30105778 |
-| Mohamed Yassin    | 30086575 |
+| Student Name      |
+|-------------------|
+| Ana Clara Perrone |
+| Angelo Gonzales   |
+| Dave Sharma       |
+| Henrique Andras   |
+| Mohamed Yassin    |
 
 ## Project Description
 
